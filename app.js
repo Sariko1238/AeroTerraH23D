@@ -726,7 +726,7 @@
       powerPreference: 'high-performance'
     });
     renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -2316,6 +2316,12 @@
   // --------------------------------------------------------------------------
   function animate() {
     requestAnimationFrame(animate);
+
+    // Stop Hangar WebGL render when user is on another tab (e.g. Flight Simulator) to prevent GPU lag!
+    const hangarSection = document.getElementById('hangar-section');
+    if (!hangarSection || !hangarSection.classList.contains('active')) {
+      return;
+    }
 
     // 1. Counter-Rotating DEP Propellers & Propeller Blur Discs
     const propSpeed = STATE.isFlying ? 0.38 : 0.09;

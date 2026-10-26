@@ -240,11 +240,13 @@
     aoa: -1.5,        // degrees
     gLoad: 1.0,
     crashed: false,
+    onGround: false,
+    crashGraceTimer: 3.0,
     _touchdownAnnounced: false,
 
     // Mechanization States
-    gearPos: 0.0,     // 0 = retracted (UP), 1 = extended (DOWN)
-    gearTarget: 0.0,
+    gearPos: 1.0,     // 1 = extended (DOWN) by default
+    gearTarget: 1.0,
     flapsStage: 0,    // 0 = 0°, 1 = 15°, 2 = 35°
     flapsAngle: 0.0,  // radians
     spoilersActive: false,
@@ -324,6 +326,54 @@
 
   // Clock
   const clock = new THREE.Clock();
+
+  // Airgates, Missions & Performance Throttling
+  let airgatesList = [];
+  let airgatesGroup = null;
+  let airgateAudioCtx = null;
+  let lastUiUpdateTime = 0;
+
+  const MISSIONS = [
+    {
+      id: 1,
+      badge: '🎯 МИССИЯ 1 / 4',
+      title: 'Воздушный Слалом и Пилотаж',
+      desc: 'Пролетите сквозь 5 светящихся изумрудных колец над долиной (+100 PTS)',
+      maxScore: 500,
+      currentProgress: 0,
+      completed: false
+    },
+    {
+      id: 2,
+      badge: '🌿 МИССИЯ 2 / 4',
+      title: 'Эко-Опрыскивание Садов',
+      desc: 'Снизьтесь над полями (< 150 м) и распылите 100 л эко-удобрения (клавиша X или «Спрей»)',
+      maxScore: 300,
+      currentProgress: 0,
+      completed: false
+    },
+    {
+      id: 3,
+      badge: '🔥 МИССИЯ 3 / 4',
+      title: 'Тушение Лесного Пожара',
+      desc: 'Сбросьте 800 л воды точно над горящим лесным массивом (Пробел или кнопка «Вода»)',
+      maxScore: 400,
+      currentProgress: 0,
+      completed: false
+    },
+    {
+      id: 4,
+      badge: '🛬 МИССИЯ 4 / 4',
+      title: 'Посадка по приборам ILS на ВПП 34',
+      desc: 'Совершите мягкую посадку на полосу 34 с выпущенными шасси (VSI > -4.5 м/с)',
+      maxScore: 500,
+      currentProgress: 0,
+      completed: false
+    }
+  ];
+
+  let currentMissionIdx = 0;
+  let missionTotalScore = 0;
 
   // ----------------------------------------------------------------------------
   // 4. MERCATOR SLIPPY MAP MATH
@@ -546,7 +596,7 @@
       powerPreference: 'high-performance',
       alpha: false
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.setSize(w, h, false);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.25;
@@ -612,6 +662,7 @@
     buildAtmosphericSun();
     buildParticleSystems();
     initRadar();
+    initAirgates3D();
 
     // Advanced 6-DOF Modular Simulator Subsystems
     if (window.WorldScenery3D && terrainGroup) {
@@ -682,30 +733,6 @@
     gearMeshes = [];
     wingFlexLeftPivot = null;
     wingFlexRightPivot = null;
-
-    if (window.FleetModels3D) {
-      let fleetData = null;
-      if (modelKey === 'a380') {
-        fleetData = window.FleetModels3D.createAirbusA380(THREE);
-      } else if (modelKey === 'b777') {
-        fleetData = window.FleetModels3D.createBoeing777(THREE);
-      } else {
-        fleetData = window.FleetModels3D.createAeroTerraH2(THREE);
-      }
-      if (fleetData && fleetData.group) {
-        planeGroup.add(fleetData.group);
-        if (fleetData.propMeshes) propMeshes = fleetData.propMeshes;
-        if (fleetData.propBlurMeshes) propBlurMeshes = fleetData.propBlurMeshes;
-        if (fleetData.gearPivots) gearMeshes = fleetData.gearPivots.map(g => ({ pivot: g.pivot, retractRotX: g.rotX || -Math.PI / 2 }));
-        wingFlexLeftPivot = fleetData.wingLeftPivot || null;
-        wingFlexRightPivot = fleetData.wingRightPivot || null;
-        if (window.GarminG3000Cockpit) {
-          window.GarminG3000Cockpit.init(planeGroup, THREE);
-        }
-        buildAeroVectorHelpers();
-        return;
-      }
-    }
 
     if (modelKey === 'a380') {
       buildA380Mesh();
@@ -2912,11 +2939,19 @@
 
     // Ground collision & Touchdown / Crash physics
     const groundLevel = 1.25;
-    if (flight.altAGL <= 0.05 || flight.pos.y <= groundLevel + 0.15) {
-      const gearRetracted = (flight.gearPos < 0.5);
-      const hardImpact = (flight.vsi < -4.5);
 
-      if ((gearRetracted || hardImpact) && !flight.crashed) {
+    // Decrement crash grace timer (invulnerability on spawn/reset/teleport)
+    if (flight.crashGraceTimer > 0) {
+      flight.crashGraceTimer = Math.max(0, flight.crashGraceTimer - dt);
+    }
+
+    // STRICT SAFETY: Crash can ONLY occur at touchdown level (altAGL <= 1.0 m)
+    // and ONLY when grace timer has expired. Above 1.0 m, crash is physically impossible.
+    if (flight.altAGL <= 1.0) {
+      const gearRetracted = (flight.gearPos < 0.5);
+      const hardImpact = (flight.vsi < -8.0);
+
+      if (flight.crashGraceTimer <= 0 && (gearRetracted || hardImpact) && !flight.crashed) {
         flight.crashed = true;
         flight.pos.y = groundLevel;
         flight.vel.set(0, 0, 0);
@@ -2938,7 +2973,7 @@
           if (crashText) {
             crashText.textContent = gearRetracted
               ? '💥 КРУШЕНИЕ (0 м): ШАССИ НЕ ВЫПУЩЕНЫ! АВАРИЙНАЯ ПОСАДКА НА ФЮЗЕЛЯЖ'
-              : '💥 АВАРИЙНАЯ ЖЁСТКАЯ ПОСАДКА (0 м): VSI = ' + flight.vsi.toFixed(1) + ' м/с (ПРЕВЫШЕН ЛИМИТ -4.5 м/с)';
+              : '💥 АВАРИЙНАЯ ЖЁСТКАЯ ПОСАДКА (0 м): VSI = ' + flight.vsi.toFixed(1) + ' м/с (ПРЕВЫШЕН ЛИМИТ -8.0 м/с)';
           }
         }
         if (crashModal) {
@@ -2946,7 +2981,7 @@
           if (crashReason) {
             crashReason.textContent = gearRetracted
               ? '💥 КРУШЕНИЕ НА 0 М: ШАССИ НЕ ВЫПУЩЕНЫ! САМОЛЁТ УПАЛ НА БРЮХО'
-              : '💥 ЖЁСТКАЯ ПОСАДКА: СКОРОСТЬ СНИЖЕНИЯ VSI ПРЕВЫСИЛА КРИТИЧЕСКИЙ ЛИМИТ (-4.5 м/с)';
+              : '💥 ЖЁСТКАЯ ПОСАДКА: СКОРОСТЬ СНИЖЕНИЯ VSI ПРЕВЫСИЛА КРИТИЧЕСКИЙ ЛИМИТ (-8.0 м/с)';
           }
         }
 
@@ -3663,41 +3698,250 @@
   }
 
   // ----------------------------------------------------------------------------
+  // 13.5. AIRGATES 3D, MISSIONS HUD & CRASH UI CONTROLLERS
+  // ----------------------------------------------------------------------------
+  function hideCrashUI() {
+    const crashBanner = document.getElementById('sim-crash-warning');
+    if (crashBanner) crashBanner.style.display = 'none';
+    const crashModal = document.getElementById('sim-crash-modal');
+    if (crashModal) crashModal.style.display = 'none';
+  }
+
+  function playAirgateChime() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!airgateAudioCtx) airgateAudioCtx = new AudioCtx();
+      if (airgateAudioCtx.state === 'suspended') airgateAudioCtx.resume();
+
+      const osc = airgateAudioCtx.createOscillator();
+      const gain = airgateAudioCtx.createGain();
+      osc.type = 'sine';
+      const now = airgateAudioCtx.currentTime;
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(1760, now + 0.25);
+
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+      osc.connect(gain);
+      gain.connect(airgateAudioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.5);
+    } catch (e) {}
+  }
+
+  function initAirgates3D() {
+    if (!terrainGroup) return;
+    if (airgatesGroup) {
+      terrainGroup.remove(airgatesGroup);
+    }
+    airgatesGroup = new THREE.Group();
+    airgatesGroup.name = 'AirgatesSlalomGroup';
+    airgatesList = [];
+
+    // 5 Slalom Airgates stretching ahead of starting point in the valley
+    const gateCoords = [
+      { x: 0,   y: 700, z: -400,  rotY: 0 },
+      { x: 60,  y: 680, z: -900,  rotY: 0.12 },
+      { x: -50, y: 660, z: -1450, rotY: -0.10 },
+      { x: 40,  y: 640, z: -2050, rotY: 0.08 },
+      { x: 0,   y: 620, z: -2700, rotY: 0 }
+    ];
+
+    gateCoords.forEach((coord, idx) => {
+      const gateSubGroup = new THREE.Group();
+      gateSubGroup.position.set(coord.x, coord.y, coord.z);
+      gateSubGroup.rotation.y = coord.rotY;
+
+      // Outer Glowing Ring Torus
+      const torusGeo = new THREE.TorusGeometry(20, 1.3, 16, 40);
+      const torusMat = new THREE.MeshStandardMaterial({
+        color: 0x00ff9d,
+        emissive: 0x00e5ff,
+        emissiveIntensity: 0.85,
+        roughness: 0.25,
+        metalness: 0.8
+      });
+      const torusMesh = new THREE.Mesh(torusGeo, torusMat);
+      gateSubGroup.add(torusMesh);
+
+      // Inner semi-transparent holographic target disc
+      const discGeo = new THREE.CircleGeometry(18.5, 32);
+      const discMat = new THREE.MeshBasicMaterial({
+        color: 0x00e5ff,
+        transparent: true,
+        opacity: 0.2,
+        side: THREE.DoubleSide
+      });
+      const discMesh = new THREE.Mesh(discGeo, discMat);
+      gateSubGroup.add(discMesh);
+
+      // Light beam pylons extending towards ground
+      const pylonGeo = new THREE.CylinderGeometry(0.4, 0.4, 400, 8);
+      const pylonMat = new THREE.MeshBasicMaterial({
+        color: 0x00e5ff,
+        transparent: true,
+        opacity: 0.35
+      });
+      const pylonLeft = new THREE.Mesh(pylonGeo, pylonMat);
+      pylonLeft.position.set(-20, -200, 0);
+      gateSubGroup.add(pylonLeft);
+
+      const pylonRight = new THREE.Mesh(pylonGeo, pylonMat);
+      pylonRight.position.set(20, -200, 0);
+      gateSubGroup.add(pylonRight);
+
+      airgatesGroup.add(gateSubGroup);
+
+      airgatesList.push({
+        index: idx + 1,
+        group: gateSubGroup,
+        mesh: torusMesh,
+        disc: discMesh,
+        material: torusMat,
+        discMaterial: discMat,
+        collected: false
+      });
+    });
+
+    terrainGroup.add(airgatesGroup);
+  }
+
+  function resetAirgates() {
+    if (!airgatesList) return;
+    airgatesList.forEach((g) => {
+      g.collected = false;
+      if (g.material) {
+        g.material.color.setHex(0x00ff9d);
+        g.material.emissive.setHex(0x00e5ff);
+      }
+      if (g.discMaterial) {
+        g.discMaterial.color.setHex(0x00e5ff);
+        g.discMaterial.opacity = 0.2;
+      }
+    });
+    MISSIONS[0].currentProgress = 0;
+    MISSIONS[0].completed = false;
+    updateMissionHUD();
+  }
+
+  const _gateWorldPos = new THREE.Vector3();
+  function updateAirgatesAndMissions(dt) {
+    if (!planeGroup) return;
+
+    // Mission 1: Airgates Slalom detection
+    if (airgatesList && airgatesList.length > 0) {
+      airgatesList.forEach((gate) => {
+        if (!gate.collected) {
+          gate.group.getWorldPosition(_gateWorldPos);
+          const d = _gateWorldPos.distanceTo(planeGroup.position);
+          if (d < 26.0) {
+            gate.collected = true;
+            gate.material.color.setHex(0xffd700);
+            gate.material.emissive.setHex(0xffaa00);
+            gate.discMaterial.color.setHex(0xffd700);
+            gate.discMaterial.opacity = 0.45;
+            playAirgateChime();
+            missionTotalScore += 100;
+            MISSIONS[0].currentProgress = Math.min(100, MISSIONS[0].currentProgress + 20);
+            showToast(`🎯 КОЛЬЦО ${gate.index}/5 ПРОЙДЕНО! +100 PTS`);
+
+            if (MISSIONS[0].currentProgress >= 100 && !MISSIONS[0].completed) {
+              MISSIONS[0].completed = true;
+              showToast('🏆 МИССИЯ 1 ВЫПОЛНЕНА: ВСЕ 5 КОЛЕЦ ПРОЙДЕНЫ (+500 PTS)!');
+            }
+          }
+        }
+      });
+    }
+
+    // Mission 2: Agro Spraying
+    if (currentMissionIdx === 1 && !MISSIONS[1].completed) {
+      if (flight.agroSpraying && flight.altAGL < 180 && flight.fluidRemaining > 0) {
+        MISSIONS[1].currentProgress = Math.min(100, MISSIONS[1].currentProgress + dt * 10);
+        if (MISSIONS[1].currentProgress >= 100) {
+          MISSIONS[1].completed = true;
+          missionTotalScore += 300;
+          playAirgateChime();
+          showToast('🌿 МИССИЯ 2 ВЫПОЛНЕНА: 100 Л УДОБРЕНИЯ РАСПЫЛЕНО НАД САДАМИ! +300 PTS');
+        }
+      }
+    }
+
+    // Mission 3: Forest Wildfire Bombing
+    if (currentMissionIdx === 2 && !MISSIONS[2].completed) {
+      if (flight.waterDropping && flight.fluidRemaining > 0) {
+        MISSIONS[2].currentProgress = 100;
+        MISSIONS[2].completed = true;
+        missionTotalScore += 400;
+        playAirgateChime();
+        showToast('🔥 МИССИЯ 3 ВЫПОЛНЕНА: ОЧАГ ПОЖАРА ПОТУШЕН СБРОСОМ 800 Л ВОДЫ! +400 PTS');
+      }
+    }
+
+    // Mission 4: Soft Landing on Runway 34
+    if (currentMissionIdx === 3 && !MISSIONS[3].completed) {
+      if (flight.altAGL <= 1.0 && flight.gearPos >= 0.8 && flight.vsi > -4.5 && !flight.crashed) {
+        MISSIONS[3].currentProgress = 100;
+        MISSIONS[3].completed = true;
+        missionTotalScore += 500;
+        playAirgateChime();
+        showToast('🛬 МИССИЯ 4 ВЫПОЛНЕНА: ИДЕАЛЬНАЯ ПОСАДКА НА ПОЛОСУ 34! +500 PTS');
+      }
+    }
+  }
+
+  function updateMissionHUD() {
+    const curM = MISSIONS[currentMissionIdx] || MISSIONS[0];
+    const badgeEl = document.getElementById('mission-hud-badge');
+    const titleEl = document.getElementById('mission-hud-title');
+    const subEl = document.getElementById('mission-hud-sub');
+    const scoreEl = document.getElementById('mission-score-val');
+    const fillEl = document.getElementById('mission-progress-fill');
+
+    if (badgeEl && badgeEl.textContent !== curM.badge) badgeEl.textContent = curM.badge;
+    if (titleEl && titleEl.textContent !== curM.title) titleEl.textContent = curM.title;
+    if (subEl && subEl.textContent !== curM.desc) subEl.textContent = curM.desc;
+    if (scoreEl) scoreEl.textContent = missionTotalScore;
+    if (fillEl) fillEl.style.width = `${Math.min(100, Math.round(curM.currentProgress))}%`;
+  }
+
+  // ----------------------------------------------------------------------------
   // 14. TELEPORT & SCENARIO RESET
   // ----------------------------------------------------------------------------
   function resetToAirFlight700() {
     flight.pos.set(0, 1.25, 0);
-    flight.altMSL = 650;
-    flight.altAGL = 650;
-    const speedMs = 180 / 3.6; // 180 km/h = 50 m/s
+    flight.altMSL = 700;
+    flight.altAGL = 700;
+    const speedMs = 160 / 3.6; // 160 km/h
     flight.vel.set(0, 0, speedMs);
     flight.rot.set(0, 0, 0);
     flight.vsi = 0;
     flight.throttle = 0.75; // 75%
     flight.propRpm = 600 + 0.75 * 2400;
     flight.aoa = 0;
-    flight.ias = 180;
+    flight.ias = 160;
     flight.tas = speedMs;
-    flight.kts = 180 * 0.539957;
+    flight.kts = 160 * 0.539957;
     flight.pitchInput = 0;
     flight.rollInput = 0;
     flight.yawInput = 0;
     for (const k in keysPressed) delete keysPressed[k];
     SIM.isJoyDragging = false;
     SIM.isMouseFlightActive = false;
-    flight.gearTarget = 0.0;
-    flight.gearPos = 0.0;
+    flight.gearTarget = 1.0;
+    flight.gearPos = 1.0;
     flight.flapsStage = 0;
     flight.spoilersActive = false;
     flight.waterDropping = false;
     flight.crashed = false;
+    flight.crashGraceTimer = 3.0; // 3 sec grace timer
     flight._touchdownAnnounced = false;
     SIM.cameraShakeTimer = 0;
-    const crashBanner = document.getElementById('sim-crash-warning');
-    if (crashBanner) crashBanner.style.display = 'none';
-    const crashModal = document.getElementById('sim-crash-modal');
-    if (crashModal) crashModal.style.display = 'none';
+    hideCrashUI();
     if (window.ILSAutopilot) window.ILSAutopilot.resetGates();
+    resetAirgates();
     flight.agroSpraying = false;
     SIM.boostActive = false;
     SIM.apMode.level = false;
@@ -3710,9 +3954,9 @@
       planeGroup.quaternion.setFromEuler(flight.rot);
     }
     if (worldGroup) {
-      worldGroup.position.set(0, -650, 0);
+      worldGroup.position.set(0, -700, 0);
     } else if (terrainGroup) {
-      terrainGroup.position.set(0, -650, 0);
+      terrainGroup.position.set(0, -700, 0);
     }
     if (camera) {
       SIM.cameraMode = 'chase';
@@ -3732,7 +3976,7 @@
     if (thrPctLabel) thrPctLabel.textContent = '75%';
     document.querySelectorAll('.btn-thr-preset').forEach(b => b.classList.remove('active'));
 
-    showToast('✈️ В ПОЛЁТЕ: ВЫСОТА 650 М, СКОРОСТЬ 180 КМ/Ч, ТЯГА 75%');
+    showToast('✈️ В ПОЛЁТЕ: ВЫСОТА 700 М, СКОРОСТЬ 160 КМ/Ч, ТЯГА 75%');
   }
 
   function teleportToLocation(locKey, targetAlt = 700) {
@@ -3787,12 +4031,10 @@
     flight.flapsStage = 1;  // Flaps 15° for STOL takeoff
     flight.spoilersActive = false;
     flight.crashed = false;
+    flight.crashGraceTimer = 3.0; // 3 sec grace timer
     flight._touchdownAnnounced = false;
     SIM.cameraShakeTimer = 0;
-    const crashBanner = document.getElementById('sim-crash-warning');
-    if (crashBanner) crashBanner.style.display = 'none';
-    const crashModal = document.getElementById('sim-crash-modal');
-    if (crashModal) crashModal.style.display = 'none';
+    hideCrashUI();
     if (window.ILSAutopilot) window.ILSAutopilot.resetGates();
 
     if (planeGroup) {
@@ -3921,19 +4163,29 @@
     const touchToggleBtn = document.getElementById('btn-sim-touch-toggle');
     const touchToggleLabel = document.getElementById('sim-touch-label');
 
-    // Auto-detect touchscreen device or mobile viewport
-    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 1024);
-    if (isTouchDevice && touchOverlay) {
-      touchOverlay.classList.add('active');
+    // Strict Isolation: Auto-detect ONLY on true mobile screens (<= 860px)
+    const isMobileScreen = window.innerWidth <= 860;
+    if (isMobileScreen && touchOverlay) {
       SIM.touchControlsActive = true;
       if (touchToggleBtn) touchToggleBtn.classList.add('active');
       if (touchToggleLabel) touchToggleLabel.textContent = 'Джойстик ВКЛ';
+    } else {
+      SIM.touchControlsActive = false;
+      if (touchOverlay) {
+        touchOverlay.classList.remove('active');
+        touchOverlay.classList.remove('user-forced');
+      }
+      document.body.classList.remove('touch-controls-forced');
+      if (touchToggleBtn) touchToggleBtn.classList.remove('active');
+      if (touchToggleLabel) touchToggleLabel.textContent = 'Джойстик';
     }
 
     if (touchToggleBtn && touchOverlay) {
       touchToggleBtn.addEventListener('click', () => {
         SIM.touchControlsActive = !SIM.touchControlsActive;
+        touchOverlay.classList.toggle('user-forced', SIM.touchControlsActive);
         touchOverlay.classList.toggle('active', SIM.touchControlsActive);
+        document.body.classList.toggle('touch-controls-forced', SIM.touchControlsActive);
         touchToggleBtn.classList.toggle('active', SIM.touchControlsActive);
         if (touchToggleLabel) {
           touchToggleLabel.textContent = SIM.touchControlsActive ? 'Джойстик ВКЛ' : 'Джойстик ВЫКЛ';
@@ -4570,6 +4822,91 @@
     const btnStartRwy = document.getElementById('btn-sim-start-rwy');
     if (btnStartRwy) btnStartRwy.addEventListener('click', startFromRunway);
 
+    // 5 Fast Scenario Teleport Buttons
+    document.getElementById('btn-teleport-freeflight')?.addEventListener('click', () => {
+      resetToAirFlight700();
+      currentMissionIdx = 0;
+      updateMissionHUD();
+    });
+
+    document.getElementById('btn-teleport-rwy')?.addEventListener('click', () => {
+      startFromRunway();
+    });
+
+    document.getElementById('btn-teleport-agro')?.addEventListener('click', () => {
+      flight.altAGL = 120;
+      flight.altMSL = 120;
+      flight.ias = 140;
+      flight.tas = 140 / 3.6;
+      flight.vel.set(0, 0, 140 / 3.6);
+      flight.vsi = 0;
+      flight.gearPos = 0.0;
+      flight.gearTarget = 0.0;
+      flight.throttle = 0.65;
+      flight.crashed = false;
+      flight.crashGraceTimer = 3.0;
+      hideCrashUI();
+      if (worldGroup) worldGroup.position.set(200, -120, -500);
+      else if (terrainGroup) terrainGroup.position.set(200, -120, -500);
+      currentMissionIdx = 1;
+      updateMissionHUD();
+      showToast('🌿 ТЕЛЕПОРТ: САДЫ И ПОЛЯ (ВЫСОТА 120 М, СПРЕЙ ГОТОВ)');
+    });
+
+    document.getElementById('btn-teleport-fire')?.addEventListener('click', () => {
+      flight.altAGL = 220;
+      flight.altMSL = 220;
+      flight.ias = 150;
+      flight.tas = 150 / 3.6;
+      flight.vel.set(0, 0, 150 / 3.6);
+      flight.vsi = 0;
+      flight.gearPos = 0.0;
+      flight.gearTarget = 0.0;
+      flight.throttle = 0.70;
+      flight.crashed = false;
+      flight.crashGraceTimer = 3.0;
+      hideCrashUI();
+      if (worldGroup) worldGroup.position.set(-300, -220, -1200);
+      else if (terrainGroup) terrainGroup.position.set(-300, -220, -1200);
+      currentMissionIdx = 2;
+      updateMissionHUD();
+      showToast('🔥 ТЕЛЕПОРТ: ОЧАГ ПОЖАРА (ВЫСОТА 220 М, БАК С ВОДОЙ ГОТОВ)');
+    });
+
+    document.getElementById('btn-teleport-ils')?.addEventListener('click', () => {
+      flight.altAGL = 350;
+      flight.altMSL = 350;
+      flight.ias = 135;
+      flight.tas = 135 / 3.6;
+      flight.vel.set(0, 0, 135 / 3.6);
+      flight.vsi = -3.2;
+      flight.gearPos = 1.0;
+      flight.gearTarget = 1.0;
+      flight.flapsStage = 2;
+      flight.throttle = 0.45;
+      flight.crashed = false;
+      flight.crashGraceTimer = 3.0;
+      hideCrashUI();
+      if (worldGroup) worldGroup.position.set(0, -350, 2500);
+      else if (terrainGroup) terrainGroup.position.set(0, -350, 2500);
+      currentMissionIdx = 3;
+      updateMissionHUD();
+      showToast('🛬 ТЕЛЕПОРТ: ГЛИССАДА ILS ВПП 34 (ВЫСОТА 350 М, ШАССИ ВЫПУЩЕНЫ)');
+    });
+
+    // Mission HUD Switch Buttons
+    document.getElementById('btn-mission-prev')?.addEventListener('click', () => {
+      currentMissionIdx = (currentMissionIdx - 1 + MISSIONS.length) % MISSIONS.length;
+      updateMissionHUD();
+      showToast(`${MISSIONS[currentMissionIdx].badge}: ${MISSIONS[currentMissionIdx].title}`);
+    });
+
+    document.getElementById('btn-mission-next')?.addEventListener('click', () => {
+      currentMissionIdx = (currentMissionIdx + 1) % MISSIONS.length;
+      updateMissionHUD();
+      showToast(`${MISSIONS[currentMissionIdx].badge}: ${MISSIONS[currentMissionIdx].title}`);
+    });
+
     const btnHelp = document.getElementById('btn-sim-help');
     const modalHelp = document.getElementById('sim-help-modal');
     const btnCloseHelp = document.getElementById('btn-close-help');
@@ -5128,7 +5465,7 @@
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   }
 
   function initResizeObserver() {
@@ -5206,15 +5543,12 @@
   function animate() {
     requestAnimationFrame(animate);
 
-    // If paused (user is on another tab), verify if simulator-section is active
-    if (SIM.paused) {
-      const simSec = document.getElementById('simulator-section');
-      if (simSec && (simSec.classList.contains('active') || window.location.hash === '#simulator-section')) {
-        SIM.paused = false;
-      } else {
-        clock.getDelta();
-        return;
-      }
+    // If simulator-section is not active, skip rendering
+    const simSec = document.getElementById('simulator-section');
+    const isSimActive = simSec && (simSec.classList.contains('active') || window.location.hash === '#simulator-section');
+    if (!isSimActive) {
+      clock.getDelta();
+      return;
     }
 
     const rawDelta = clock.getDelta();
@@ -5299,6 +5633,7 @@
 
     // 2. Scenery, AI Traffic & Particle FX
     update3DWorldScenery(dt);
+    updateAirgatesAndMissions(dt);
     updateAITraffic(dt);
     updateDynamicShadow();
     updateCrashParticles(dt);
@@ -5325,10 +5660,15 @@
     // 5. Camera
     updateCamera();
 
-    // 6. UI Instruments, Radar & Live Professor Formulas
-    updateHUDInstruments();
-    updateRadar();
-    updateProfessorOverlay();
+    // 6. UI Instruments, Radar, Live Professor Formulas & Mission HUD (Throttled to 10 Hz)
+    const now = performance.now();
+    if (now - lastUiUpdateTime >= 100) {
+      lastUiUpdateTime = now;
+      updateHUDInstruments();
+      updateRadar();
+      updateProfessorOverlay();
+      updateMissionHUD();
+    }
 
     // 7. Render 3D Scene
     if (renderer && scene && camera) {

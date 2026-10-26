@@ -363,6 +363,23 @@
 
       <!-- Quick Action Buttons -->
       <div class="sim-top-actions-group">
+        <!-- Fast Scenario Teleport Buttons -->
+        <button class="sim-top-btn teleport-btn" id="btn-teleport-freeflight" title="Прыжок в свободный полёт (Высота 700 м, скорость 160 км/ч)">
+          <i class="fa-solid fa-plane"></i> <span>✈️ Полёт 700 м</span>
+        </button>
+        <button class="sim-top-btn teleport-btn" id="btn-teleport-rwy" title="Старт с ВПП (Разбег с полосы)">
+          <i class="fa-solid fa-road"></i> <span>🛫 ВПП 0 м</span>
+        </button>
+        <button class="sim-top-btn teleport-btn" id="btn-teleport-agro" title="Телепорт к садам для агро-опрыскивания">
+          <i class="fa-solid fa-seedling"></i> <span>🌿 К Садам</span>
+        </button>
+        <button class="sim-top-btn teleport-btn" id="btn-teleport-fire" title="Телепорт к очагу лесного пожара для сброса воды">
+          <i class="fa-solid fa-fire-extinguisher"></i> <span>🔥 К Пожару</span>
+        </button>
+        <button class="sim-top-btn teleport-btn" id="btn-teleport-ils" title="Заход на глиссаду посадки по приборам ILS">
+          <i class="fa-solid fa-plane-arrival"></i> <span>🛬 Заход ILS</span>
+        </button>
+
         <button class="sim-top-btn primary" id="btn-sim-auto-takeoff" title="Автоматический взлёт с ВПП (Разбег, закрылки 15°, подъём на 150 м)">
           <i class="fa-solid fa-plane-departure"></i> <span>🛫 АВТО-ВЗЛЁТ С ВПП</span>
         </button>
@@ -390,7 +407,7 @@
           <i class="fa-solid fa-backward-step"></i>
           <span>3D Повтор</span>
         </button>
-        <button class="sim-top-btn" id="btn-sim-reset-700" title="Сбросить самолёт в воздух на высоту 700 м (скорость 140 км/ч, тяга 65%)">
+        <button class="sim-top-btn" id="btn-sim-reset-700" title="Сбросить самолёт в воздух на высоту 700 м (скорость 160 км/ч, тяга 75%)">
           <i class="fa-solid fa-rotate-right"></i>
           <span>🔄 Сброс в полёт (700 м)</span>
         </button>
@@ -414,6 +431,23 @@
           <i class="fa-solid fa-circle-question"></i>
           <span>Помощь</span>
         </button>
+      </div>
+    </div>
+
+    <!-- Interactive Mission Tracker HUD Banner -->
+    <div class="sim-mission-tracker-hud" id="sim-mission-tracker-hud">
+      <div class="mission-hud-badge" id="mission-hud-badge">🎯 МИССИЯ 1 / 4</div>
+      <div class="mission-hud-content">
+        <div class="mission-hud-title" id="mission-hud-title">Воздушный Слалом и Пилотаж</div>
+        <div class="mission-hud-sub" id="mission-hud-sub">Пролетите сквозь 5 светящихся изумрудных колец над долиной (+100 PTS)</div>
+      </div>
+      <div class="mission-hud-stats">
+        <div class="mission-score-box"><i class="fa-solid fa-trophy gold"></i> <b id="mission-score-val">0</b> PTS</div>
+        <div class="mission-progress-bar"><div class="mission-progress-fill" id="mission-progress-fill" style="width: 0%;"></div></div>
+      </div>
+      <div class="mission-nav-btns">
+        <button class="btn-mission-switch" id="btn-mission-prev" title="Предыдущая миссия"><i class="fa-solid fa-chevron-left"></i></button>
+        <button class="btn-mission-switch" id="btn-mission-next" title="Следующая миссия"><i class="fa-solid fa-chevron-right"></i></button>
       </div>
     </div>
 
