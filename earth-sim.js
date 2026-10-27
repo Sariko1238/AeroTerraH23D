@@ -2,6 +2,7 @@
  * ==============================================================================
  * AEROTERRA H2 — GLOBAL 3D EARTH FLIGHT SIMULATOR (CESIUMJS & GOOGLE 3D TILES)
  * ------------------------------------------------------------------------------
+ * • 👑 Создатель и Главный Конструктор: Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО (Founder & Chief Aerospace Architect)
  * • CesiumJS (Pinned v1.119.0) + Google Photorealistic 3D Tiles (Asset 2275207)
  * • Cesium Ion Access Token via UI & LocalStorage fallback to World Terrain + OSM
  * • Airport Presets: Tashkent (UTTT), Samarkand (UTSS), Turin (LIMF) & Lat/Lon
@@ -23,6 +24,16 @@
   // 1. AIRPORT PRESETS & CONSTANTS
   // --------------------------------------------------------------------------
   const AIRPORTS = {
+    tashkent: {
+      id: 'tashkent',
+      name: '🇺🇿 Ташкент-Сити & Две Башни (UTTT)',
+      country: '🇺🇿 Узбекистан',
+      lat: 41.3111,
+      lon: 69.2797,
+      alt: 450,
+      heading: 0,
+      description: 'Tashkent City, две башни-небоскрёба 340м и воздушные ворота'
+    },
     charvak: {
       id: 'charvak',
       name: 'Чарвак & Ташкент (Агро)',
@@ -243,7 +254,7 @@
       this.aircraftEntity = null;
       this.audio = new SimAudio();
 
-      this.currentAirport = AIRPORTS.charvak || AIRPORTS.uttt;
+      this.currentAirport = AIRPORTS.tashkent || AIRPORTS.charvak;
       this.refOrigin = {
         lat: this.currentAirport.lat,
         lon: this.currentAirport.lon,

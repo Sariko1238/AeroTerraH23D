@@ -33,6 +33,7 @@
     sensitivity: 1.0,
     touchControlsActive: false,
     gyroActive: false,
+    apMasterActive: false,
     autoTakeoffActive: false,
     autoTakeoffStage: 'done',
     autoTakeoffTargetAlt: 150.0,
@@ -70,12 +71,21 @@
   const LOCATIONS = {
     charvak: {
       id: 'charvak',
-      name: '🇺🇿 Ташкент и Чарвак',
-      lat: 41.6350,
-      lon: 70.0350,
+      name: '🇺🇿 Ташкент (Tashkent City)',
+      lat: 41.3111,
+      lon: 69.2797,
       alt: 700,
-      heading: 90,
-      desc: 'Чарвакское водохранилище и предгорные агро-кластеры Узбекистана'
+      heading: 0,
+      desc: 'Tashkent City, башни-близнецы и река Чирчик'
+    },
+    tashkent: {
+      id: 'tashkent',
+      name: '🇺🇿 Ташкент-Сити (Twin Towers)',
+      lat: 41.3111,
+      lon: 69.2797,
+      alt: 450,
+      heading: 0,
+      desc: 'Tashkent City, две башни 340м и воздушные ворота'
     },
     dubai: {
       id: 'dubai',
@@ -240,6 +250,7 @@
     aoa: -1.5,        // degrees
     gLoad: 1.0,
     crashed: false,
+    isBurning: false,
     onGround: false,
     crashGraceTimer: 3.0,
     _touchdownAnnounced: false,
@@ -283,6 +294,7 @@
   let gearMeshes = [];
   let flapMeshes = [];
   let spoilerMeshes = [];
+  let aileronMeshes = [];
   let wingFlexLeftPivot = null, wingFlexRightPivot = null;
   let aeroVectorGroup;
   let waterParticleSystem, sprayParticleSystem, vortexParticleSystem;
@@ -291,6 +303,24 @@
   let speedLinesGroup, speedLinesVelocities;
   const NUM_SPEED_LINES = 280;
   let joyActive = false, joyX = 0, joyY = 0, joyTouchId = null;
+
+  // Tashkent City Twin Sky-Towers & Landmarks
+  let twinTowersGroup = null;
+  let towerAlphaMesh = null, towerBetaMesh = null;
+  let towerBeaconLights = [];
+  let towerBonusCollected = false;
+
+  // Real 3D Fire & Burning Airplane System
+  let aircraftFireGroup = null;
+  let aircraftFireParticles = null;
+  let aircraftSmokeParticles = null;
+  let aircraftFireLight = null;
+  let aircraftFoamParticles = null;
+  let aircraftFoamActive = false;
+  let aircraftFoamTimer = 0;
+
+  // Smart Autopilot (AP Master) Tashkent Route Navigation
+  let apMasterWaypointIdx = 0;
 
   // 3D World Scenery & Atmosphere
   let sceneryGroup, atcRadarDish, fireEmbersLight, fireParticlePoints, smokeParticlePoints;
@@ -309,8 +339,8 @@
   const mapTiles = new Map();
   const TILE_ZOOM = 15;
   let currentTileCenter = { tx: -1, ty: -1 };
-  let currentOriginLat = LOCATIONS.charvak.lat;
-  let currentOriginLon = LOCATIONS.charvak.lon;
+  let currentOriginLat = 41.3111;
+  let currentOriginLon = 69.2797;
   let textureLoader;
 
   // Radar
@@ -734,6 +764,7 @@
     propBlurMeshes = [];
     flapMeshes = [];
     spoilerMeshes = [];
+    aileronMeshes = [];
     gearMeshes = [];
     wingFlexLeftPivot = null;
     wingFlexRightPivot = null;
@@ -747,6 +778,7 @@
     }
 
     buildAeroVectorHelpers();
+    initAircraftFireSystem(planeGroup);
   }
 
   function buildAeroTerraMesh() {
@@ -903,6 +935,21 @@
 
       planeGroup.add(spPivot);
       spoilerMeshes.push(spPivot);
+    }
+
+    // Movable Ailerons (Animated on outer trailing edge for roll control A/D)
+    aileronMeshes = [];
+    for (const side of [-4.9, 4.9]) {
+      const aileronPivot = new THREE.Group();
+      aileronPivot.position.set(side, 0.52, -0.32);
+
+      const aileronGeo = new THREE.BoxGeometry(2.2, 0.05, 0.35);
+      const aileronMesh = new THREE.Mesh(aileronGeo, cyanAccentMat);
+      aileronMesh.position.set(0, 0, -0.175);
+      aileronPivot.add(aileronMesh);
+
+      planeGroup.add(aileronPivot);
+      aileronMeshes.push({ pivot: aileronPivot, side: side > 0 ? 1 : -1 });
     }
 
     // 3. 4 Distributed Electric Propulsion (DEP) Motors & Spinning Propellers
@@ -1067,7 +1114,17 @@
     dragArrow.name = 'dragArrow';
     aeroVectorGroup.add(dragArrow);
 
-
+    // 4th Essential Aviation Vector: Weight / Gravity (Yellow arrow pointing DOWN to center of Earth)
+    const weightArrow = new THREE.ArrowHelper(
+      new THREE.Vector3(0, -1, 0),
+      new THREE.Vector3(0, -0.2, 0),
+      2.6,
+      0xfacc15,
+      0.5,
+      0.25
+    );
+    weightArrow.name = 'weightArrow';
+    aeroVectorGroup.add(weightArrow);
   }
 
   function buildA380Mesh() {
@@ -1446,6 +1503,18 @@
     );
     dragArrow.name = 'dragArrow';
     aeroVectorGroup.add(dragArrow);
+
+    // 4th Essential Force: Weight (Gravity mg pointing DOWN to center of Earth)
+    const weightArrow = new THREE.ArrowHelper(
+      new THREE.Vector3(0, -1, 0),
+      new THREE.Vector3(0, -0.2, 0),
+      2.6,
+      0xfacc15,
+      0.5,
+      0.25
+    );
+    weightArrow.name = 'weightArrow';
+    aeroVectorGroup.add(weightArrow);
 
     aeroVectorGroup.visible = flight.showAeroVectors;
     planeGroup.add(aeroVectorGroup);
@@ -1894,13 +1963,204 @@
     lakeMesh.scale.set(1.4, 1.0, 1.0);
     sceneryGroup.add(lakeMesh);
 
+    // 7. Tashkent City Twin Sky-Towers (340m, 90m Separation, Helipads, Beacons, Neon Signs)
+    initTwinTowersTashkent(sceneryGroup);
+
     if (terrainGroup) terrainGroup.add(sceneryGroup);
     else scene.add(sceneryGroup);
+  }
+
+  // ----------------------------------------------------------------------------
+  // TWIN SKY-TOWERS TASHKENT CITY (340m, 90m Separation, Helipads, Beacons, Signs)
+  // ----------------------------------------------------------------------------
+  function initTwinTowersTashkent(parent) {
+    if (!parent) return;
+    if (twinTowersGroup) {
+      parent.remove(twinTowersGroup);
+    }
+    twinTowersGroup = new THREE.Group();
+    twinTowersGroup.name = 'TwinTowersTashkent';
+
+    // Tower Coordinates: x = -45 and x = +45, z = 1750 (Strictly 90m separation)
+    const towerConfigs = [
+      { name: 'Tower Alpha', signText: '👑 MUSAYEV SARDOR TOWER I', x: -45, z: 1750 },
+      { name: 'Tower Beta', signText: '⚡ AEROTERRA TOWER II', x: 45, z: 1750 }
+    ];
+
+    towerBeaconLights = [];
+
+    // Glass Facade Material with realistic city sky reflections
+    const glassFacadeMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0ea5e9,
+      metalness: 0.85,
+      roughness: 0.1,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.05,
+      reflectivity: 1.0,
+      transmission: 0.2,
+      transparent: true,
+      opacity: 0.92
+    });
+
+    const steelMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      metalness: 0.9,
+      roughness: 0.2
+    });
+
+    const goldTrimMat = new THREE.MeshStandardMaterial({
+      color: 0xffd700,
+      metalness: 0.8,
+      roughness: 0.2
+    });
+
+    towerConfigs.forEach((cfg, idx) => {
+      const towerGroup = new THREE.Group();
+      towerGroup.position.set(cfg.x, 0, cfg.z);
+
+      // 1. Tier 1: Base podium (0m - 140m), 44m x 44m
+      const t1Geo = new THREE.BoxGeometry(44, 140, 44);
+      const t1Mesh = new THREE.Mesh(t1Geo, glassFacadeMat);
+      t1Mesh.position.y = 70;
+      t1Mesh.castShadow = true;
+      t1Mesh.receiveShadow = true;
+      towerGroup.add(t1Mesh);
+
+      // Floor illumination horizontal bands for Tier 1
+      for (let y = 14; y < 140; y += 14) {
+        const bandMesh = new THREE.Mesh(new THREE.BoxGeometry(44.2, 0.8, 44.2), goldTrimMat);
+        bandMesh.position.y = y;
+        towerGroup.add(bandMesh);
+      }
+
+      // 2. Tier 2: Mid section (140m - 260m), 36m x 36m
+      const t2Geo = new THREE.BoxGeometry(36, 120, 36);
+      const t2Mesh = new THREE.Mesh(t2Geo, glassFacadeMat);
+      t2Mesh.position.y = 200;
+      t2Mesh.castShadow = true;
+      t2Mesh.receiveShadow = true;
+      towerGroup.add(t2Mesh);
+
+      for (let y = 154; y < 260; y += 14) {
+        const bandMesh = new THREE.Mesh(new THREE.BoxGeometry(36.2, 0.8, 36.2), goldTrimMat);
+        bandMesh.position.y = y;
+        towerGroup.add(bandMesh);
+      }
+
+      // 3. Tier 3: Upper penthouse (260m - 320m), 28m x 28m
+      const t3Geo = new THREE.BoxGeometry(28, 60, 28);
+      const t3Mesh = new THREE.Mesh(t3Geo, glassFacadeMat);
+      t3Mesh.position.y = 290;
+      t3Mesh.castShadow = true;
+      t3Mesh.receiveShadow = true;
+      towerGroup.add(t3Mesh);
+
+      // 4. Helipad Deck at y = 320m with [H] marking
+      const helipadCanvas = document.createElement('canvas');
+      helipadCanvas.width = 512;
+      helipadCanvas.height = 512;
+      const hCtx = helipadCanvas.getContext('2d');
+      hCtx.fillStyle = '#1e293b';
+      hCtx.fillRect(0, 0, 512, 512);
+
+      // Yellow outer border
+      hCtx.strokeStyle = '#facc15';
+      hCtx.lineWidth = 14;
+      hCtx.strokeRect(16, 16, 480, 480);
+
+      // Yellow circle
+      hCtx.beginPath();
+      hCtx.arc(256, 256, 200, 0, Math.PI * 2);
+      hCtx.stroke();
+
+      // Bold [H] mark
+      hCtx.fillStyle = '#ffffff';
+      hCtx.font = 'bold 180px "Inter", sans-serif';
+      hCtx.textAlign = 'center';
+      hCtx.textBaseline = 'middle';
+      hCtx.fillText('H', 256, 256);
+
+      const helipadTex = new THREE.CanvasTexture(helipadCanvas);
+      const helipadMat = new THREE.MeshStandardMaterial({
+        map: helipadTex,
+        roughness: 0.6,
+        metalness: 0.2
+      });
+      const helipadMesh = new THREE.Mesh(new THREE.CylinderGeometry(14, 14, 2, 32), helipadMat);
+      helipadMesh.position.y = 321;
+      towerGroup.add(helipadMesh);
+
+      // 5. 25-meter Spire on Roof (320m to 345m)
+      const spireGeo = new THREE.CylinderGeometry(0.25, 0.9, 25, 12);
+      const spireMesh = new THREE.Mesh(spireGeo, steelMat);
+      spireMesh.position.y = 333.5;
+      towerGroup.add(spireMesh);
+
+      // 6. Blinking Aviation Hazard Red Beacon on Spire Tip (y = 346m)
+      const beaconLight = new THREE.PointLight(0xff0022, 2.5, 90);
+      beaconLight.position.set(0, 346, 0);
+      towerGroup.add(beaconLight);
+
+      const beaconSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(0.8, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0xff0022 })
+      );
+      beaconSphere.position.set(0, 346, 0);
+      towerGroup.add(beaconSphere);
+
+      towerBeaconLights.push({ light: beaconLight, sphere: beaconSphere, phase: idx * Math.PI });
+
+      // 7. Glowing Neon Signage at Penthouse level
+      const signCanvas = document.createElement('canvas');
+      signCanvas.width = 1024;
+      signCanvas.height = 256;
+      const sCtx = signCanvas.getContext('2d');
+      sCtx.fillStyle = '#030712';
+      sCtx.fillRect(0, 0, 1024, 256);
+      sCtx.strokeStyle = idx === 0 ? '#ffd700' : '#00e5ff';
+      sCtx.lineWidth = 6;
+      sCtx.strokeRect(10, 10, 1004, 236);
+
+      sCtx.fillStyle = idx === 0 ? '#ffd700' : '#00e5ff';
+      sCtx.font = 'bold 54px "Orbitron", "Space Grotesk", sans-serif';
+      sCtx.textAlign = 'center';
+      sCtx.textBaseline = 'middle';
+      sCtx.fillText(cfg.signText, 512, 128);
+
+      const signTex = new THREE.CanvasTexture(signCanvas);
+      const signMat = new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide });
+
+      // 4 signs on all 4 faces of Tier 3
+      const signOffsets = [
+        { x: 0, z: 14.2, rotY: 0 },
+        { x: 0, z: -14.2, rotY: Math.PI },
+        { x: 14.2, z: 0, rotY: Math.PI / 2 },
+        { x: -14.2, z: 0, rotY: -Math.PI / 2 }
+      ];
+      signOffsets.forEach(so => {
+        const signPlane = new THREE.Mesh(new THREE.PlaneGeometry(24, 6), signMat);
+        signPlane.position.set(so.x, 305, so.z);
+        signPlane.rotation.y = so.rotY;
+        towerGroup.add(signPlane);
+      });
+
+      twinTowersGroup.add(towerGroup);
+    });
+
+    parent.add(twinTowersGroup);
   }
 
   function update3DWorldScenery(dt) {
     if (atcRadarDish) {
       atcRadarDish.rotation.y += dt * 1.2;
+    }
+    if (towerBeaconLights && towerBeaconLights.length > 0) {
+      const now = performance.now() * 0.005;
+      towerBeaconLights.forEach(b => {
+        const on = Math.sin(now + b.phase) > 0.15;
+        b.light.intensity = on ? 3.0 : 0.0;
+        b.sphere.visible = on;
+      });
     }
     if (fireEmbersLight) {
       fireEmbersLight.intensity = 4.0 + Math.sin(performance.now() * 0.015) * 2.0;
@@ -2175,7 +2435,217 @@
     touchdownSmokePoints.material.opacity = 0.85;
   }
 
+  // ----------------------------------------------------------------------------
+  // REAL 3D FIRE, SMOKE & FOAM SUPPRESSION SYSTEM ON AIRCRAFT
+  // ----------------------------------------------------------------------------
+  function initAircraftFireSystem(parent) {
+    if (!parent) return;
+    if (aircraftFireGroup) {
+      parent.remove(aircraftFireGroup);
+    }
+    aircraftFireGroup = new THREE.Group();
+    aircraftFireGroup.name = 'AircraftFireGroup';
+    aircraftFireGroup.visible = false;
+
+    // 1. 300 Flame Particles with turbulent upward velocities
+    const fireCount = 300;
+    const fireGeo = new THREE.BufferGeometry();
+    const firePositions = new Float32Array(fireCount * 3);
+    const fireVelocities = new Float32Array(fireCount * 3);
+    const fireColors = new Float32Array(fireCount * 3);
+
+    for (let i = 0; i < fireCount; i++) {
+      firePositions[i * 3 + 0] = (Math.random() - 0.5) * 4.8;
+      firePositions[i * 3 + 1] = 0.2 + Math.random() * 2.2;
+      firePositions[i * 3 + 2] = (Math.random() - 0.5) * 3.5;
+
+      fireVelocities[i * 3 + 0] = (Math.random() - 0.5) * 2.0;
+      fireVelocities[i * 3 + 1] = 4.0 + Math.random() * 6.0;
+      fireVelocities[i * 3 + 2] = (Math.random() - 0.5) * 2.0;
+
+      const t = Math.random();
+      if (t > 0.6) {
+        fireColors[i * 3 + 0] = 1.0; fireColors[i * 3 + 1] = 0.92; fireColors[i * 3 + 2] = 0.1; // Yellow
+      } else if (t > 0.25) {
+        fireColors[i * 3 + 0] = 1.0; fireColors[i * 3 + 1] = 0.38; fireColors[i * 3 + 2] = 0.05; // Orange
+      } else {
+        fireColors[i * 3 + 0] = 0.95; fireColors[i * 3 + 1] = 0.08; fireColors[i * 3 + 2] = 0.02; // Red
+      }
+    }
+
+    fireGeo.setAttribute('position', new THREE.BufferAttribute(firePositions, 3));
+    fireGeo.setAttribute('color', new THREE.BufferAttribute(fireColors, 3));
+
+    const fireMat = new THREE.PointsMaterial({
+      size: 4.5,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.92,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    aircraftFireParticles = new THREE.Points(fireGeo, fireMat);
+    aircraftFireParticles.userData = { vels: fireVelocities };
+    aircraftFireGroup.add(aircraftFireParticles);
+
+    // 2. Rising Dense Black Smoke Pillar (200 particles)
+    const smokeCount = 200;
+    const smokeGeo = new THREE.BufferGeometry();
+    const smokePositions = new Float32Array(smokeCount * 3);
+    for (let i = 0; i < smokeCount; i++) {
+      smokePositions[i * 3 + 0] = (Math.random() - 0.5) * 6.0;
+      smokePositions[i * 3 + 1] = 2.0 + (i / smokeCount) * 80.0;
+      smokePositions[i * 3 + 2] = (Math.random() - 0.5) * 6.0;
+    }
+    smokeGeo.setAttribute('position', new THREE.BufferAttribute(smokePositions, 3));
+    const smokeMat = new THREE.PointsMaterial({
+      color: 0x141416,
+      size: 15.0,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false
+    });
+    aircraftSmokeParticles = new THREE.Points(smokeGeo, smokeMat);
+    aircraftFireGroup.add(aircraftSmokeParticles);
+
+    // 3. Flickering Fire Light
+    aircraftFireLight = new THREE.PointLight(0xff3300, 10.0, 60);
+    aircraftFireLight.position.set(0, 1.5, 0);
+    aircraftFireGroup.add(aircraftFireLight);
+
+    // 4. White Fire Suppression Foam / Steam Particles
+    const foamCount = 180;
+    const foamGeo = new THREE.BufferGeometry();
+    const foamPositions = new Float32Array(foamCount * 3);
+    const foamVelocities = new Float32Array(foamCount * 3);
+    for (let i = 0; i < foamCount; i++) {
+      foamPositions[i * 3 + 0] = (Math.random() - 0.5) * 2.0;
+      foamPositions[i * 3 + 1] = 0.5 + Math.random() * 1.5;
+      foamPositions[i * 3 + 2] = (Math.random() - 0.5) * 3.0;
+
+      foamVelocities[i * 3 + 0] = (Math.random() - 0.5) * 8.0;
+      foamVelocities[i * 3 + 1] = 2.0 + Math.random() * 6.0;
+      foamVelocities[i * 3 + 2] = (Math.random() - 0.5) * 8.0;
+    }
+    foamGeo.setAttribute('position', new THREE.BufferAttribute(foamPositions, 3));
+    const foamMat = new THREE.PointsMaterial({
+      color: 0xe0f2fe,
+      size: 7.0,
+      transparent: true,
+      opacity: 0.0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    aircraftFoamParticles = new THREE.Points(foamGeo, foamMat);
+    aircraftFoamParticles.userData = { vels: foamVelocities };
+    aircraftFireGroup.add(aircraftFoamParticles);
+
+    parent.add(aircraftFireGroup);
+  }
+
+  function extinguishAircraftFire() {
+    flight.isBurning = false;
+    if (fuselageMesh && fuselageMesh.material) {
+      fuselageMesh.material.emissive.setHex(0x000000);
+      fuselageMesh.material.emissiveIntensity = 0.0;
+      fuselageMesh.material.roughness = 0.12;
+    }
+    aircraftFoamActive = true;
+    aircraftFoamTimer = 2.5;
+    if (aircraftFoamParticles) {
+      aircraftFoamParticles.material.opacity = 0.9;
+      const fPos = aircraftFoamParticles.geometry.attributes.position.array;
+      for (let i = 0; i < fPos.length; i += 3) {
+        fPos[i + 0] = (Math.random() - 0.5) * 3.0;
+        fPos[i + 1] = 0.4 + Math.random() * 1.5;
+        fPos[i + 2] = (Math.random() - 0.5) * 4.0;
+      }
+      aircraftFoamParticles.geometry.attributes.position.needsUpdate = true;
+    }
+    if (aircraftFireParticles) aircraftFireParticles.geometry.attributes.position.needsUpdate = true;
+    if (aircraftFireLight) aircraftFireLight.intensity = 0;
+
+    const crashText = document.getElementById('sim-crash-text');
+    if (crashText) crashText.textContent = '🚒 ПОЖАР ПОТУШЕН! СИСТЕМА ПОЖАРОТУШЕНИЯ СРАБОТАЛА';
+    showToast('🚒 ПОЖАР ПОТУШЕН: БОРТОВАЯ СИСТЕМА ПОЖАРОТУШЕНИЯ УСПЕШНО ЛИКВИДИРОВАЛА ПЛАМЯ!');
+  }
+
+  function toggleTestFire() {
+    if (flight.isBurning) {
+      extinguishAircraftFire();
+    } else {
+      flight.isBurning = true;
+      if (aircraftFireGroup) aircraftFireGroup.visible = true;
+      if (fuselageMesh && fuselageMesh.material) {
+        fuselageMesh.material.emissive.setHex(0xff3300);
+        fuselageMesh.material.emissiveIntensity = 1.4;
+      }
+      showToast('🔥 ТЕСТ ПОЖАРА ДВИГАТЕЛЯ: СИМУЛЯЦИЯ АВАРИЙНОЙ СИТУАЦИИ ВКЛЮЧЕНА!');
+    }
+  }
+
   function updateCrashParticles(dt) {
+    // 1. Continuous 3D Fire & Smoke on Burning Aircraft
+    if (flight.isBurning && aircraftFireGroup) {
+      aircraftFireGroup.visible = true;
+
+      if (aircraftFireParticles) {
+        const fPos = aircraftFireParticles.geometry.attributes.position.array;
+        const fVels = aircraftFireParticles.userData.vels;
+        for (let i = 0; i < fPos.length; i += 3) {
+          fPos[i + 0] += (fVels[i + 0] + (Math.random() - 0.5) * 1.5) * dt;
+          fPos[i + 1] += fVels[i + 1] * dt;
+          fPos[i + 2] += (fVels[i + 2] + (Math.random() - 0.5) * 1.5) * dt;
+
+          if (fPos[i + 1] > 6.0) {
+            fPos[i + 0] = (Math.random() - 0.5) * 4.8;
+            fPos[i + 1] = 0.2 + Math.random() * 0.8;
+            fPos[i + 2] = (Math.random() - 0.5) * 3.5;
+          }
+        }
+        aircraftFireParticles.geometry.attributes.position.needsUpdate = true;
+      }
+
+      if (aircraftSmokeParticles) {
+        const sPos = aircraftSmokeParticles.geometry.attributes.position.array;
+        for (let i = 0; i < sPos.length; i += 3) {
+          sPos[i + 1] += 22.0 * dt;
+          sPos[i + 0] += 1.8 * dt; // slight wind drift
+          if (sPos[i + 1] > 80.0) {
+            sPos[i + 0] = (Math.random() - 0.5) * 6.0;
+            sPos[i + 1] = 2.0;
+            sPos[i + 2] = (Math.random() - 0.5) * 6.0;
+          }
+        }
+        aircraftSmokeParticles.geometry.attributes.position.needsUpdate = true;
+      }
+
+      if (aircraftFireLight) {
+        aircraftFireLight.intensity = 8.0 + Math.random() * 5.0;
+      }
+    } else if (aircraftFireGroup && !aircraftFoamActive) {
+      aircraftFireGroup.visible = false;
+    }
+
+    // 2. Fire Extinguishing Foam Burst
+    if (aircraftFoamActive && aircraftFoamParticles) {
+      aircraftFoamTimer -= dt;
+      const fPos = aircraftFoamParticles.geometry.attributes.position.array;
+      const fVels = aircraftFoamParticles.userData.vels;
+      for (let i = 0; i < fPos.length; i += 3) {
+        fPos[i + 0] += fVels[i + 0] * dt;
+        fPos[i + 1] += fVels[i + 1] * dt;
+        fPos[i + 2] += fVels[i + 2] * dt;
+      }
+      aircraftFoamParticles.geometry.attributes.position.needsUpdate = true;
+      aircraftFoamParticles.material.opacity = Math.max(0, aircraftFoamTimer / 2.5);
+      if (aircraftFoamTimer <= 0) {
+        aircraftFoamActive = false;
+        if (aircraftFireGroup && !flight.isBurning) aircraftFireGroup.visible = false;
+      }
+    }
+
     if (crashExplosionActive) {
       crashExplosionTimer -= dt;
       if (crashFlashLight) {
@@ -2689,17 +3159,63 @@
       }
     });
 
-    // Euler-Bernoulli Wing Flex Live Deflection
-    const wingFlexAngle = (flight.gLoad - 1.0) * 0.042;
-    if (wingFlexLeftPivot) {
-      wingFlexLeftPivot.rotation.z = Math.max(-0.06, Math.min(0.14, wingFlexAngle));
-    }
-    if (wingFlexRightPivot) {
-      wingFlexRightPivot.rotation.z = -Math.max(-0.06, Math.min(0.14, wingFlexAngle));
+    // Movable Ailerons Animation (Deflect proportionally on A/D roll input)
+    if (aileronMeshes && aileronMeshes.length >= 2) {
+      aileronMeshes[0].pivot.rotation.x = -flight.rollInput * 0.45;
+      aileronMeshes[1].pivot.rotation.x = flight.rollInput * 0.45;
     }
 
+    // Rigid AeroTerra Wing: Eliminate flapping / polygon distortion
+    if (wingFlexLeftPivot) wingFlexLeftPivot.rotation.z = 0;
+    if (wingFlexRightPivot) wingFlexRightPivot.rotation.z = 0;
+
     // 3. Autopilot logic (Stable PD control without unbounded integrator!)
-    if (SIM.apMode.demo) {
+    if (SIM.apMasterActive) {
+      // 1. Anti-Stall Recovery & Wing Leveling
+      if (flight.aoa > 13.0 || flight.ias < 110.0) {
+        flight.pitchInput = -0.35; // Push nose down to regain airspeed
+        flight.throttle = Math.min(1.0, flight.throttle + 0.5 * dt);
+      } else {
+        // Altitude hold at 700m
+        const altErr = 700 - flight.pos.y;
+        const targetPitch = THREE.MathUtils.clamp(altErr * 0.003 - flight.vsi * 0.03, -0.18, 0.18);
+        flight.pitchInput = THREE.MathUtils.clamp((flight.rot.x - targetPitch) * 3.0, -1.0, 1.0);
+      }
+
+      // 2. Cruise Speed Regulation at 210 km/h (optimal hydrogen power ~80%)
+      if (flight.ias < 205) flight.throttle = Math.min(0.95, flight.throttle + 0.25 * dt);
+      else if (flight.ias > 215) flight.throttle = Math.max(0.60, flight.throttle - 0.25 * dt);
+      else flight.throttle = 0.80;
+
+      // 3. Tashkent City Navigation Route
+      const tashkentRoute = [
+        { name: 'Взлётная полоса 34', x: 0, z: 200 },
+        { name: 'Две Башни Ташкент-Сити', x: 0, z: 1750 },
+        { name: 'Агро-сады мониторинга', x: 350, z: 2400 },
+        { name: 'Лесной рубеж тушения', x: -650, z: 750 },
+        { name: 'Озеро Чирчик', x: -450, z: -500 },
+        { name: 'Глиссада ВПП ILS', x: 0, z: -1600 }
+      ];
+
+      const curWP = tashkentRoute[apMasterWaypointIdx];
+      const dx = curWP.x - flight.pos.x;
+      const dz = curWP.z - flight.pos.z;
+      const distToWP = Math.hypot(dx, dz);
+
+      if (distToWP < 220) {
+        apMasterWaypointIdx = (apMasterWaypointIdx + 1) % tashkentRoute.length;
+        showToast('🤖 АВТОПИЛОТ: КУРС НА ' + tashkentRoute[apMasterWaypointIdx].name.toUpperCase());
+      }
+
+      const targetHdgRad = Math.atan2(dx, dz);
+      let hdgDiff = targetHdgRad - flight.rot.y;
+      while (hdgDiff > Math.PI) hdgDiff -= Math.PI * 2;
+      while (hdgDiff < -Math.PI) hdgDiff += Math.PI * 2;
+
+      const targetRoll = THREE.MathUtils.clamp(-hdgDiff * 1.3, -0.42, 0.42);
+      flight.rollInput = THREE.MathUtils.clamp((flight.rot.z - targetRoll) * 2.8, -1.0, 1.0);
+      flight.yawInput = flight.rollInput * 0.65;
+    } else if (SIM.apMode.demo) {
       if (!SIM._demoTimer) SIM._demoTimer = 0;
       SIM._demoTimer += dt;
       // Target altitude oscillates smoothly between 660m and 760m
@@ -3113,14 +3629,16 @@
       guardStatus: 'ACTIVE (0 EXPLOSIONS)'
     };
 
-    // Update Aerodynamic Vector Helpers
+    // Update Aerodynamic Vector Helpers (4 Essential Flight Vectors)
     if (flight.showAeroVectors && aeroVectorGroup) {
       const lArrow = aeroVectorGroup.getObjectByName('liftArrow');
       const tArrow = aeroVectorGroup.getObjectByName('thrustArrow');
       const dArrow = aeroVectorGroup.getObjectByName('dragArrow');
+      const wArrow = aeroVectorGroup.getObjectByName('weightArrow');
       if (lArrow) lArrow.setLength(Math.min(7, Math.max(0.5, (liftForceN / currentMass) * 0.35)));
       if (tArrow) tArrow.setLength(Math.min(7, Math.max(0.5, (thrustN / currentMass) * 0.35)));
       if (dArrow) dArrow.setLength(Math.min(7, Math.max(0.5, (dragForceN / currentMass) * 0.35)));
+      if (wArrow) wArrow.setLength(Math.min(7, Math.max(0.5, 9.80665 * 0.35)));
     }
 
     // Modular ILS & ATC Voice / GPWS Altitude Callouts
@@ -3278,9 +3796,10 @@
     ctx.fillText('S', 0, r - 12);
     ctx.fillText('W', -r + 12, 0);
 
-    // 4 Key POIs
+    // 5 Key POIs
     const pois = [
       { name: 'ВПП', color: '#00ff9d', x: 0, z: 0 },
+      { name: '🏙️ БАШНИ', color: '#ffd700', x: 0, z: 1750 },
       { name: 'AGRO', color: '#00e5ff', x: 2500, z: 1200 },
       { name: 'ОГОНЬ', color: '#ff4444', x: -3200, z: 2100 },
       { name: 'ОЗЕРО', color: '#38bdf8', x: 1200, z: -2800 }
@@ -3525,6 +4044,45 @@
     if (mobAoa) mobAoa.textContent = `${aoaVal >= 0 ? '+' : ''}${aoaVal.toFixed(1)}°`;
     if (mobH2) mobH2.textContent = `${Math.round(h2Pct)}%`;
     if (mobWater) mobWater.textContent = `${Math.round(flight.fluidRemaining)}\u00A0л`;
+
+    // 11. Landing Gear 3-LED Indicator Status
+    const noseLed = document.getElementById('gear-led-nose');
+    const leftLed = document.getElementById('gear-led-left');
+    const rightLed = document.getElementById('gear-led-right');
+    const gearMsg = document.getElementById('gear-status-msg');
+    const btnGearDown = document.getElementById('btn-gear-down');
+    const btnGearUp = document.getElementById('btn-gear-up');
+
+    if (noseLed && leftLed && rightLed) {
+      if (flight.gearPos >= 0.98) {
+        noseLed.className = 'gear-led-pill green';
+        leftLed.className = 'gear-led-pill green';
+        rightLed.className = 'gear-led-pill green';
+        if (gearMsg) gearMsg.textContent = '3 GREEN: DOWN & LOCKED';
+        if (btnGearDown) btnGearDown.classList.add('active');
+        if (btnGearUp) btnGearUp.classList.remove('active');
+      } else if (flight.gearPos <= 0.02) {
+        noseLed.className = 'gear-led-pill up';
+        leftLed.className = 'gear-led-pill up';
+        rightLed.className = 'gear-led-pill up';
+        if (gearMsg) gearMsg.textContent = 'GEAR UP & LOCKED';
+        if (btnGearUp) btnGearUp.classList.add('active');
+        if (btnGearDown) btnGearDown.classList.remove('active');
+      } else {
+        noseLed.className = 'gear-led-pill transit';
+        leftLed.className = 'gear-led-pill transit';
+        rightLed.className = 'gear-led-pill transit';
+        if (gearMsg) gearMsg.textContent = `TRANSIT (${Math.round(flight.gearPos * 100)}%)...`;
+        if (btnGearDown) btnGearDown.classList.remove('active');
+        if (btnGearUp) btnGearUp.classList.remove('active');
+      }
+    }
+
+    // 12. Smart Autopilot (AP Master) HUD Indicator
+    const apBadge = document.getElementById('hud-ap-master-badge');
+    if (apBadge) {
+      apBadge.style.display = SIM.apMasterActive ? 'flex' : 'none';
+    }
   }
 
   // Live Professor Aerodynamics Formulas & Telemetry Overlay
@@ -3882,12 +4440,37 @@
     });
     MISSIONS[0].currentProgress = 0;
     MISSIONS[0].completed = false;
+    towerBonusCollected = false;
     updateMissionHUD();
   }
 
   const _gateWorldPos = new THREE.Vector3();
   function updateAirgatesAndMissions(dt) {
     if (!planeGroup) return;
+
+    // Tashkent Twin Sky-Towers Extreme Gap Flight & Collision Detection
+    const px = planeGroup.position.x;
+    const py = planeGroup.position.y;
+    const pz = planeGroup.position.z;
+
+    if (!towerBonusCollected && Math.abs(px) < 23.0 && py >= 80.0 && py <= 350.0 && pz >= 1720.0 && pz <= 1780.0) {
+      towerBonusCollected = true;
+      missionTotalScore += 500;
+      playAirgateChime();
+      showToast('🏆 +500 PTS: ЭКСТРЕМАЛЬНЫЙ ПРОЛЁТ МЕЖДУ БАШНЯМИ ТАШКЕНТА!');
+      if (window.CrashVfxParticles) {
+        window.CrashVfxParticles.triggerTouchdownPuff(planeGroup.position);
+      }
+    }
+
+    // Collision Detection against Tower Alpha (x: [-67, -23]) and Tower Beta (x: [23, 67])
+    if (!flight.crashed && flight.crashGraceTimer <= 0) {
+      const hitAlpha = (px >= -67.0 && px <= -23.0 && py >= 0 && py <= 348.0 && pz >= 1728.0 && pz <= 1772.0);
+      const hitBeta = (px >= 23.0 && px <= 67.0 && py >= 0 && py <= 348.0 && pz >= 1728.0 && pz <= 1772.0);
+      if (hitAlpha || hitBeta) {
+        triggerAircraftCrash('💥 СТОЛКНОВЕНИЕ С НЕБОСКРЁБОМ ТАШКЕНТ-СИТИ! КОРПУС РАЗБИТ И ГОРИТ');
+      }
+    }
 
     // Mission 1: Airgates Slalom detection (Emerald Rings +100 PTS & Gold Flash)
     if (airgatesList && airgatesList.length > 0) {
@@ -4003,10 +4586,18 @@
     flight.spoilersActive = false;
     flight.waterDropping = false;
     flight.crashed = false;
+    flight.isBurning = false;
     flight.crashGraceTimer = 3.0; // 3 sec grace timer
     flight._touchdownAnnounced = false;
     SIM.cameraShakeTimer = 0;
+    SIM.apMasterActive = false;
     hideCrashUI();
+    if (fuselageMesh && fuselageMesh.material) {
+      fuselageMesh.material.emissive.setHex(0x000000);
+      fuselageMesh.material.emissiveIntensity = 0.0;
+      fuselageMesh.material.roughness = 0.12;
+    }
+    if (aircraftFireGroup) aircraftFireGroup.visible = false;
     if (window.ILSAutopilot) window.ILSAutopilot.resetGates();
     resetAirgates();
     flight.agroSpraying = false;
@@ -4045,6 +4636,88 @@
     document.querySelectorAll('.btn-thr-preset').forEach(b => b.classList.remove('active'));
 
     showToast('✈️ В ПОЛЁТЕ: ВЫСОТА 700 М, СКОРОСТЬ 180 КМ/Ч, ТЯГА 80%');
+  }
+
+  function teleportToTwinTowers() {
+    flight.pos.set(0, 1.25, 0);
+    flight.altMSL = 450;
+    flight.altAGL = 450;
+    const speedMs = 190 / 3.6; // 190 km/h
+    flight.vel.set(0, 0, speedMs);
+    flight.rot.set(0, 0, 0);
+    flight.vsi = 0;
+    flight.throttle = 0.80;
+    flight.propRpm = 600 + 0.80 * 2400;
+    flight.aoa = 0;
+    flight.ias = 190;
+    flight.tas = speedMs;
+    flight.kts = 190 * 0.539957;
+    flight.pitchInput = 0;
+    flight.rollInput = 0;
+    flight.yawInput = 0;
+    for (const k in keysPressed) delete keysPressed[k];
+    SIM.isJoyDragging = false;
+    SIM.isMouseFlightActive = false;
+    flight.gearTarget = 0.0; // Gear up for high-speed corridor flyby
+    flight.gearPos = 0.0;
+    flight.flapsStage = 0;
+    flight.spoilersActive = false;
+    flight.crashed = false;
+    flight.isBurning = false;
+    flight.crashGraceTimer = 3.0;
+    flight._touchdownAnnounced = false;
+    SIM.cameraShakeTimer = 0;
+    hideCrashUI();
+    if (fuselageMesh && fuselageMesh.material) {
+      fuselageMesh.material.emissive.setHex(0x000000);
+      fuselageMesh.material.emissiveIntensity = 0.0;
+      fuselageMesh.material.roughness = 0.12;
+    }
+    if (aircraftFireGroup) aircraftFireGroup.visible = false;
+
+    if (planeGroup) {
+      planeGroup.position.set(0, 1.25, 0);
+      planeGroup.quaternion.setFromEuler(flight.rot);
+    }
+    if (camera) {
+      SIM.cameraMode = 'chase';
+      const isHeavy = (SIM.planeModel === 'a380' || SIM.planeModel === 'b777');
+      camera.position.set(0, 1.25 + (isHeavy ? 10.5 : 5.2), -(isHeavy ? 38.0 : 18.0));
+      camera.lookAt(0, isHeavy ? 2.5 : 1.2, isHeavy ? 45.0 : 25.0);
+    }
+
+    // World positioned so towers (at z = 1750) are 600m ahead of aircraft (at z = 1150)
+    if (worldGroup) {
+      worldGroup.position.set(0, -450, -1150);
+    } else if (terrainGroup) {
+      terrainGroup.position.set(0, -450, -1150);
+    }
+
+    const thrSlider = document.getElementById('sim-slider-throttle');
+    const thrValEl = document.getElementById('sim-throttle-val');
+    if (thrSlider) thrSlider.value = 80;
+    if (thrValEl) thrValEl.textContent = '80%';
+
+    showToast('🏙️ ТАШКЕНТ-СИТИ: ПРЯМОЙ КУРС В СТВОР МЕЖДУ ДВУМЯ БАШНЯМИ (ВЫСОТА 450 М, СКОРОСТЬ 190 КМ/Ч)!');
+  }
+
+  function toggleAPMaster() {
+    SIM.apMasterActive = !SIM.apMasterActive;
+    const btn = document.getElementById('btn-sim-ap-master');
+    const badge = document.getElementById('hud-ap-master-badge');
+
+    if (SIM.apMasterActive) {
+      flight.crashed = false;
+      flight.isBurning = false;
+      hideCrashUI();
+      if (btn) btn.classList.add('active');
+      if (badge) badge.style.display = 'flex';
+      showToast('🤖 АВТОПИЛОТ (AP MASTER): АКТИВИРОВАН! ЭШЕЛОН 700 М | 210 КМ/Ч | МАРШРУТ ТАШКЕНТА');
+    } else {
+      if (btn) btn.classList.remove('active');
+      if (badge) badge.style.display = 'none';
+      showToast('🤖 АВТОПИЛОТ (AP MASTER): ОТКЛЮЧЁН (РУЧНОЕ УПРАВЛЕНИЕ)');
+    }
   }
 
   function teleportToLocation(locKey, targetAlt = 700) {
@@ -4905,7 +5578,39 @@
     const btnStartRwy = document.getElementById('btn-sim-start-rwy');
     if (btnStartRwy) btnStartRwy.addEventListener('click', startFromRunway);
 
-    // 5 Fast Scenario Teleport Buttons
+    // Fast Scenario Teleport Buttons
+    document.getElementById('btn-teleport-towers')?.addEventListener('click', () => {
+      teleportToTwinTowers();
+    });
+
+    document.getElementById('btn-sim-ap-master')?.addEventListener('click', () => {
+      toggleAPMaster();
+    });
+
+    // Dedicated Landing Gear Buttons
+    document.getElementById('btn-gear-down')?.addEventListener('click', () => {
+      flight.gearTarget = 1.0;
+      showToast('🛞 ШАССИ: ВЫПУСК (DOWN & LOCKED)...');
+    });
+
+    document.getElementById('btn-gear-up')?.addEventListener('click', () => {
+      flight.gearTarget = 0.0;
+      showToast('🛞 ШАССИ: УБОРКА (GEAR UP)...');
+    });
+
+    // Fire Extinguishing Buttons
+    document.getElementById('btn-extinguish-fire')?.addEventListener('click', () => {
+      extinguishAircraftFire();
+    });
+    document.getElementById('btn-crash-modal-extinguish')?.addEventListener('click', () => {
+      extinguishAircraftFire();
+    });
+
+    // Test Engine Fire
+    document.getElementById('btn-test-engine-fire')?.addEventListener('click', () => {
+      toggleTestFire();
+    });
+
     document.getElementById('btn-teleport-freeflight')?.addEventListener('click', () => {
       resetToAirFlight700();
       currentMissionIdx = 0;

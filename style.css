@@ -9401,3 +9401,195 @@ body.in-simulator-mode .hangar-hud-overlay {
   color: #00e5ff;
   border: 1px solid rgba(0, 229, 255, 0.4);
 }
+
+/* ==============================================================================
+   TASHKENT TWIN SKY-TOWERS & AP MASTER & 3-LED GEAR CONTROL STYLING
+   ============================================================================== */
+.sim-top-btn.towers-btn {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(0, 229, 255, 0.35));
+  border: 1px solid #ffd700;
+  color: #ffd700;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.35);
+  font-weight: 700;
+}
+.sim-top-btn.towers-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.45), rgba(0, 229, 255, 0.55));
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.65);
+  transform: translateY(-1px);
+}
+
+.sim-top-btn.ap-master-btn {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(0, 229, 255, 0.45));
+  border: 1px solid #10b981;
+  color: #00ff9d;
+  box-shadow: 0 0 16px rgba(0, 255, 157, 0.35);
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.sim-top-btn.ap-master-btn.active {
+  background: linear-gradient(135deg, #10b981, #00e5ff);
+  color: #050a18;
+  box-shadow: 0 0 30px rgba(0, 255, 157, 0.85);
+}
+
+/* HUD AP Master Badge */
+.hud-ap-master-badge {
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  background: rgba(6, 11, 22, 0.85);
+  border: 1.5px solid #00ff9d;
+  box-shadow: 0 0 25px rgba(0, 255, 157, 0.5);
+  backdrop-filter: blur(12px);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #00ff9d;
+  z-index: 900;
+  pointer-events: none;
+  animation: apBadgeGlow 2s infinite alternate;
+}
+@keyframes apBadgeGlow {
+  0% { box-shadow: 0 0 15px rgba(0, 255, 157, 0.3); }
+  100% { box-shadow: 0 0 30px rgba(0, 255, 157, 0.7); }
+}
+.ap-pulse-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #00ff9d;
+  box-shadow: 0 0 10px #00ff9d;
+  animation: apDotBlink 1s infinite alternate;
+}
+@keyframes apDotBlink {
+  0% { opacity: 0.4; transform: scale(0.8); }
+  100% { opacity: 1.0; transform: scale(1.2); }
+}
+
+/* Dedicated Landing Gear Section */
+.gear-ctrl-row {
+  background: rgba(10, 18, 36, 0.75);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+}
+.ctrl-buttons-group.gear-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.gear-btn-action {
+  font-weight: 700;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+#btn-gear-down.active {
+  background: rgba(16, 185, 129, 0.35);
+  border-color: #10b981;
+  color: #00ff9d;
+  box-shadow: 0 0 15px rgba(0, 255, 157, 0.4);
+}
+#btn-gear-up.active {
+  background: rgba(239, 68, 68, 0.35);
+  border-color: #ef4444;
+  color: #f87171;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
+/* 3 Round LED Status Indicators */
+.gear-led-status-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(4, 8, 18, 0.9);
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.gear-led-pill {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.gear-led-pill.green {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid #10b981;
+  color: #00ff9d;
+  box-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+}
+.gear-led-pill.transit {
+  background: rgba(234, 179, 8, 0.25);
+  border: 1px solid #eab308;
+  color: #facc15;
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.6);
+  animation: gearTransitBlink 0.5s infinite alternate;
+}
+@keyframes gearTransitBlink {
+  0% { opacity: 0.5; }
+  100% { opacity: 1.0; }
+}
+.gear-led-pill.up {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid #ef4444;
+  color: #f87171;
+}
+.gear-status-txt {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #94a3b8;
+  margin-left: 4px;
+}
+
+/* Fire Extinguishing Buttons */
+.crash-actions-btns {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 8px;
+}
+.btn-crash-extinguish,
+.sim-crash-btn.extinguish {
+  background: linear-gradient(135deg, #0284c7, #06b6d4);
+  border: 1.5px solid #38bdf8;
+  color: #fff;
+  font-weight: 800;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(14, 165, 233, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+.btn-crash-extinguish:hover,
+.sim-crash-btn.extinguish:hover {
+  background: linear-gradient(135deg, #0369a1, #0891b2);
+  box-shadow: 0 0 30px rgba(14, 165, 233, 0.8);
+  transform: translateY(-1px);
+}
+
+.sim-act-btn.btn-fire-test {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #f87171;
+}
+.sim-act-btn.btn-fire-test:hover {
+  background: rgba(239, 68, 68, 0.35);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+}
+

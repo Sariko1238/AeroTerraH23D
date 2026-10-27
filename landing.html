@@ -404,7 +404,10 @@
                 <a href="#overview" className="hover:text-cyan-400 transition-colors">Концепция</a>
                 <a href="#missions" className="hover:text-cyan-400 transition-colors">Dual-Role Миссии</a>
                 <a href="#aerodynamics" className="hover:text-cyan-400 transition-colors">Аэродинамика Class-A</a>
-                <a href="#powertrain" className="hover:text-cyan-400 transition-colors">Водород $LH_2$</a>
+                <a href="#powertrain" className="hover:text-cyan-400 transition-colors">Водород LH₂</a>
+                <a href="#specs" className="hover:text-cyan-400 transition-colors">ТТХ &amp; Экономика</a>
+                <a href="#modules" className="hover:text-cyan-400 transition-colors">4 Модуля</a>
+                <a href="#downloads" className="hover:text-cyan-400 transition-colors">Скачать</a>
                 <a href="#cloud" className="hover:text-cyan-400 transition-colors">Neon Cloud</a>
               </nav>
 
@@ -478,10 +481,21 @@
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-950/40 backdrop-blur-md text-cyan-300 text-xs font-mono uppercase tracking-wider mb-6 shadow-sm"
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-950/40 backdrop-blur-md text-cyan-300 text-xs font-mono uppercase tracking-wider mb-4 shadow-sm"
               >
                 <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
                 <span>University Aerospace Engineering Club • 2026 Flagship</span>
+              </motion.div>
+
+              {/* Creator Gold Badge */}
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.65, delay: 0.05 }}
+                className="block max-w-2xl mx-auto px-5 py-2.5 rounded-2xl border-2 border-amber-400/80 bg-gradient-to-r from-amber-950/70 via-slate-900/90 to-amber-950/70 backdrop-blur-xl text-amber-300 text-xs sm:text-sm font-bold tracking-wide mb-6 shadow-xl shadow-amber-500/20"
+              >
+                <span className="text-amber-400 mr-2 text-base">👑</span>
+                <span>Создатель и Главный Конструктор: <strong className="text-white font-extrabold underline decoration-amber-400">Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО</strong> (Founder &amp; Chief Aerospace Architect)</span>
               </motion.div>
 
               {/* Main Headline */}
@@ -549,13 +563,13 @@
               >
                 <div className="glass-card rounded-2xl p-4 text-center border-slate-800">
                   <p className="text-xs font-mono text-slate-400 uppercase">Взлётная Масса (MTOW)</p>
-                  <p className="text-3xl font-tech font-bold text-cyan-400 mt-1">850 <span className="text-sm font-sans text-slate-300">кг</span></p>
-                  <p className="text-[11px] text-slate-400 mt-1">CFRP T1000G Углепластик</p>
+                  <p className="text-3xl font-tech font-bold text-cyan-400 mt-1">1 638 <span className="text-sm font-sans text-slate-300">кг</span></p>
+                  <p className="text-[11px] text-slate-400 mt-1">CFRP T1000G / 25 кг RC</p>
                 </div>
                 <div className="glass-card rounded-2xl p-4 text-center border-slate-800">
                   <p className="text-xs font-mono text-slate-400 uppercase">Дальность Полёта</p>
                   <p className="text-3xl font-tech font-bold text-emerald-400 mt-1">1 850 <span className="text-sm font-sans text-slate-300">км</span></p>
-                  <p className="text-[11px] text-slate-400 mt-1">45 кг криогенного $LH_2$</p>
+                  <p className="text-[11px] text-slate-400 mt-1">45 кг криогенного LH₂</p>
                 </div>
                 <div className="glass-card rounded-2xl p-4 text-center border-slate-800">
                   <p className="text-xs font-mono text-slate-400 uppercase">Мощность Тяги</p>
@@ -563,9 +577,9 @@
                   <p className="text-[11px] text-slate-400 mt-1">Ballard PEMFC + 4x DEP</p>
                 </div>
                 <div className="glass-card rounded-2xl p-4 text-center border-slate-800">
-                  <p className="text-xs font-mono text-slate-400 uppercase">Выбросы $CO_2$</p>
+                  <p className="text-xs font-mono text-slate-400 uppercase">Выбросы CO₂</p>
                   <p className="text-3xl font-tech font-bold text-emerald-400 mt-1">0.0 <span className="text-sm font-sans text-slate-300">г/км</span></p>
-                  <p className="text-[11px] text-slate-400 mt-1">Выхлоп: чистый пар $H_2O$</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Выхлоп: чистый пар H₂O</p>
                 </div>
               </motion.div>
 
@@ -904,7 +918,274 @@
           </section>
 
           {/* ===================================================================
-              SECTION 5: NEON CLOUD & VERCEL ARCHITECTURE
+              SECTION 5: TTX TECHNICAL SPECIFICATIONS & ECONOMIC EFFICIENCY
+              =================================================================== */}
+          <section id="specs" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-slate-800/80">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <span className="px-3 py-1 rounded-full text-xs font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 uppercase tracking-wider">
+                Engineering Metrics &amp; ROI
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold text-white mt-4 font-tech">
+                ТТХ И ЭКОНОМИЧЕСКАЯ ЭФФЕКТИВНОСТЬ
+              </h2>
+              <p className="text-slate-400 text-sm sm:text-base mt-3">
+                Полные лётно-технические характеристики и экономическое превосходство AeroTerra H2 перед керосиновой авиацией и дронами.
+              </p>
+            </div>
+
+            {/* TTX Table */}
+            <div className="glass-card rounded-2xl p-6 sm:p-8 border-slate-800 mb-10 overflow-x-auto">
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="sliders" className="w-5 h-5 text-cyan-400"></i>
+                <span>Лётно-Технические Характеристики (ТТХ)</span>
+              </h3>
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 font-mono">
+                    <th className="py-3 px-4">Параметр</th>
+                    <th className="py-3 px-4">Значение (Полноразмерный)</th>
+                    <th className="py-3 px-4">RC-Прототип (1:4)</th>
+                    <th className="py-3 px-4 hidden md:table-cell">Примечание / Норматив</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 font-mono text-slate-300">
+                  <tr>
+                    <td className="py-3 px-4 text-white font-semibold">Взлётная масса (MTOW)</td>
+                    <td className="py-3 px-4 text-cyan-400 font-bold">1 638 кг</td>
+                    <td className="py-3 px-4 text-emerald-400">25.0 кг</td>
+                    <td className="py-3 px-4 text-slate-500 hidden md:table-cell">CS-VLA / АП-23</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-white font-semibold">Размах крыла</td>
+                    <td className="py-3 px-4 text-cyan-400">12.4 м</td>
+                    <td className="py-3 px-4 text-emerald-400">3.1 м</td>
+                    <td className="py-3 px-4 text-slate-500 hidden md:table-cell">Удлинение AR = 9.8</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-white font-semibold">Аэродинамический профиль</td>
+                    <td className="py-3 px-4 text-slate-200">NACA 64-215 (ламинарный)</td>
+                    <td className="py-3 px-4 text-slate-200">NACA 64-215</td>
+                    <td className="py-3 px-4 text-slate-500 hidden md:table-cell">L/D max = 21.4</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-white font-semibold">Крейсерская / Макс. скорость</td>
+                    <td className="py-3 px-4 text-cyan-400">180 / 240 км/ч</td>
+                    <td className="py-3 px-4 text-emerald-400">95 / 130 км/ч</td>
+                    <td className="py-3 px-4 text-slate-500 hidden md:table-cell">Оптимальный расход LH₂</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-white font-semibold">Длина разбега / пробега (STOL)</td>
+                    <td className="py-3 px-4 text-emerald-400 font-bold">85 м / 90 м</td>
+                    <td className="py-3 px-4 text-emerald-400 font-bold">12 м / 14 м</td>
+                    <td className="py-3 px-4 text-slate-500 hidden md:table-cell">Обдув крыла 4x винтами DEP</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-white font-semibold">Дальность полёта</td>
+                    <td className="py-3 px-4 text-cyan-400 font-bold">1 850 км</td>
+                    <td className="py-3 px-4 text-emerald-400">220 км</td>
+                    <td className="py-3 px-4 text-slate-500 hidden md:table-cell">Криогенный LH₂ 45 кг</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-white font-semibold">Практический потолок</td>
+                    <td className="py-3 px-4 text-slate-200">4 500 м</td>
+                    <td className="py-3 px-4 text-slate-200">2 500 м</td>
+                    <td className="py-3 px-4 text-slate-500 hidden md:table-cell">Турбонаддув стека PEMFC</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-white font-semibold">Силовая установка</td>
+                    <td className="py-3 px-4 text-slate-200">PEMFC 120 кВт + 4x DEP (4x30 кВт)</td>
+                    <td className="py-3 px-4 text-slate-200">BLDC 4x 1.8 кВт</td>
+                    <td className="py-3 px-4 text-slate-500 hidden md:table-cell">Буфер LiFePO4 15 кВт·ч</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Economic Comparison */}
+            <div className="glass-card rounded-2xl p-6 sm:p-8 border-slate-800 overflow-x-auto">
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="trending-up" className="w-5 h-5 text-emerald-400"></i>
+                <span>Сравнение Экономической Эффективности</span>
+              </h3>
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 font-mono">
+                    <th className="py-3 px-4">Борт / Платформа</th>
+                    <th className="py-3 px-4">Стоимость лётного часа</th>
+                    <th className="py-3 px-4">Полезная нагрузка</th>
+                    <th className="py-3 px-4">Выбросы CO₂</th>
+                    <th className="py-3 px-4">Разбег ВПП</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 font-mono text-slate-300">
+                  <tr className="bg-emerald-950/20 text-emerald-300">
+                    <td className="py-3 px-4 font-bold flex items-center gap-2">
+                      <span className="text-emerald-400">★</span> AeroTerra H2 (Наш борт)
+                    </td>
+                    <td className="py-3 px-4 text-emerald-400 font-bold">$48 / час</td>
+                    <td className="py-3 px-4 font-semibold">600–1 000 кг</td>
+                    <td className="py-3 px-4 text-emerald-400 font-bold">0.0 г/км (H₂O)</td>
+                    <td className="py-3 px-4 font-bold">85 м (STOL)</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-white">Ан-2 «Кукурузник»</td>
+                    <td className="py-3 px-4 text-amber-400">$220 / час</td>
+                    <td className="py-3 px-4">1 500 кг</td>
+                    <td className="py-3 px-4 text-rose-400">450 кг CO₂/ч</td>
+                    <td className="py-3 px-4">170 м</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-white">Вертолёт Ми-8</td>
+                    <td className="py-3 px-4 text-rose-400 font-bold">$950 / час</td>
+                    <td className="py-3 px-4">4 000 кг</td>
+                    <td className="py-3 px-4 text-rose-400">1 800 кг CO₂/ч</td>
+                    <td className="py-3 px-4">0 м (вертолёт)</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 px-4 text-white">Агродроны DJI Agras T40 (флот)</td>
+                    <td className="py-3 px-4 text-slate-300">$85 / час (замена АКБ)</td>
+                    <td className="py-3 px-4">40–50 кг</td>
+                    <td className="py-3 px-4 text-emerald-400">0.0 г/км</td>
+                    <td className="py-3 px-4">0 м (VTOL)</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p className="text-xs text-slate-400 mt-4 leading-relaxed font-sans">
+                💡 <strong>Вывод:</strong> AeroTerra H2 снижает эксплуатационные расходы агро- и лесопатрульных миссий в <strong>4.5 раза</strong> относительно пилотируемой керосиновой авиации и в <strong>12 раз</strong> повышает производительность в гектарах по сравнению с мультироторными агродронами.
+              </p>
+            </div>
+          </section>
+
+          {/* ===================================================================
+              SECTION 6: 4 INTERCHANGEABLE MODULAR PODS
+              =================================================================== */}
+          <section id="modules" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-slate-800/80">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <span className="px-3 py-1 rounded-full text-xs font-mono font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 uppercase tracking-wider">
+                Quick-Swap Payload Pods
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold text-white mt-4 font-tech">
+                4 БЫСТРОСЪЁМНЫХ МОДУЛЯ (PODS)
+              </h2>
+              <p className="text-slate-400 text-sm sm:text-base mt-3">
+                Замена профиля миссии самолёта за 10 минут на любой полевой грунтовой площадке без спецтехники.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Pod 1 */}
+              <div className="glass-card rounded-2xl p-6 border-slate-800 hover:border-emerald-500/50 transition-all flex flex-col">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4 shadow-lg shadow-emerald-500/10">
+                  <i data-lucide="sprout" className="w-6 h-6"></i>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">МОДУЛЬ #1 · АГРО</span>
+                <h4 className="text-lg font-bold text-white mt-1 mb-3">Ультрамалообъёмное Опрыскивание (УМО)</h4>
+                <p className="text-xs text-slate-400 leading-relaxed mb-4 flex-1">
+                  Бак 1000 л для биоудобрений, штанга шириной 14 м с роторными распылителями Micronair AU5000. Производительность до 180 га/час.
+                </p>
+                <div className="pt-3 border-t border-slate-800/80 text-[11px] font-mono text-slate-300 space-y-1">
+                  <p><span className="text-slate-500">Ёмкость:</span> 1 000 литров</p>
+                  <p><span className="text-slate-500">Ширина захвата:</span> 28 метров</p>
+                </div>
+              </div>
+
+              {/* Pod 2 */}
+              <div className="glass-card rounded-2xl p-6 border-slate-800 hover:border-rose-500/50 transition-all flex flex-col">
+                <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mb-4 shadow-lg shadow-rose-500/10">
+                  <i data-lucide="flame" className="w-6 h-6"></i>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-rose-400 uppercase tracking-wider">МОДУЛЬ #2 · ПОЖАРНЫЙ</span>
+                <h4 className="text-lg font-bold text-white mt-1 mb-3">Сброс Воды &amp; Ретарданта 800 Л</h4>
+                <p className="text-xs text-slate-400 leading-relaxed mb-4 flex-1">
+                  Быстрый сброс огнегасящего состава за 2.4 секунды с пневмостворками и ИК-тепловизором FLIR для локализации лесных верховых пожаров.
+                </p>
+                <div className="pt-3 border-t border-slate-800/80 text-[11px] font-mono text-slate-300 space-y-1">
+                  <p><span className="text-slate-500">Сброс:</span> 800 л / 2.4 сек</p>
+                  <p><span className="text-slate-500">Длина полосы:</span> 120 метров</p>
+                </div>
+              </div>
+
+              {/* Pod 3 */}
+              <div className="glass-card rounded-2xl p-6 border-slate-800 hover:border-cyan-500/50 transition-all flex flex-col">
+                <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-4 shadow-lg shadow-cyan-500/10">
+                  <i data-lucide="activity" className="w-6 h-6"></i>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider">МОДУЛЬ #3 · МЕДЭВАКУАЦИЯ</span>
+                <h4 className="text-lg font-bold text-white mt-1 mb-3">Санитарный Модуль Medevac</h4>
+                <p className="text-xs text-slate-400 leading-relaxed mb-4 flex-1">
+                  Оборудован носилками интенсивной терапии, аппаратом ИВЛ, дефибриллятором и кислородным концентратором с креслом врача-реаниматолога.
+                </p>
+                <div className="pt-3 border-t border-slate-800/80 text-[11px] font-mono text-slate-300 space-y-1">
+                  <p><span className="text-slate-500">Вместимость:</span> 1 пациент + 1 врач</p>
+                  <p><span className="text-slate-500">Виброизоляция:</span> активная</p>
+                </div>
+              </div>
+
+              {/* Pod 4 */}
+              <div className="glass-card rounded-2xl p-6 border-slate-800 hover:border-blue-500/50 transition-all flex flex-col">
+                <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 mb-4 shadow-lg shadow-blue-500/10">
+                  <i data-lucide="package" className="w-6 h-6"></i>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-blue-400 uppercase tracking-wider">МОДУЛЬ #4 · КАРГО</span>
+                <h4 className="text-lg font-bold text-white mt-1 mb-3">Грузовой Контейнер 600 КГ</h4>
+                <p className="text-xs text-slate-400 leading-relaxed mb-4 flex-1">
+                  Объём 2.8 м³ с роликовым настилом пола и системой крепления такелажными сетками. Перевозка запасных частей, гуманитарных грузов и автономных полевых сенсоров.
+                </p>
+                <div className="pt-3 border-t border-slate-800/80 text-[11px] font-mono text-slate-300 space-y-1">
+                  <p><span className="text-slate-500">Полезный объём:</span> 2.8 м³</p>
+                  <p><span className="text-slate-500">Время смены:</span> 6 минут</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ===================================================================
+              SECTION 7: STANDALONE SIMULATOR & GAME APP DOWNLOADS
+              =================================================================== */}
+          <section id="downloads" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-slate-800/80">
+            <div className="glass-card rounded-3xl p-8 sm:p-12 border-cyan-500/40 bg-gradient-to-br from-slate-900/90 via-[#060b16] to-slate-900/90 text-center relative overflow-hidden">
+              <div className="max-w-3xl mx-auto">
+                <span className="px-3 py-1 rounded-full text-xs font-mono font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 uppercase tracking-wider">
+                  Cross-Platform Standalone Build
+                </span>
+                <h2 className="text-3xl sm:text-5xl font-extrabold text-white mt-4 font-tech">
+                  СКАЧАТЬ АВТОНОМНУЮ ВЕРСИЮ СИМУЛЯТОРА
+                </h2>
+                <p className="text-slate-300 text-sm sm:text-base mt-4 leading-relaxed">
+                  Запускайте полноценный авиасимулятор AeroTerra H2 на ноутбуке или мобильном телефоне без подключения к интернету с максимальной частотой 120 FPS и поддержкой джойстиков.
+                </p>
+
+                <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+                  <a 
+                    href="index.html" 
+                    className="px-6 py-3.5 rounded-2xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-2.5 shadow-lg shadow-cyan-500/25 transition-all transform hover:-translate-y-0.5"
+                  >
+                    <i data-lucide="monitor" className="w-4 h-4"></i>
+                    <span>💻 Для Windows / Mac / Linux (Web App)</span>
+                  </a>
+
+                  <a 
+                    href="index.html" 
+                    className="px-6 py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-emerald-500/40 text-emerald-300 font-bold text-xs uppercase tracking-wider flex items-center gap-2.5 transition-all transform hover:-translate-y-0.5"
+                  >
+                    <i data-lucide="smartphone" className="w-4 h-4"></i>
+                    <span>📱 Для Android &amp; iOS (PWA / Touch)</span>
+                  </a>
+
+                  <button 
+                    onClick={() => alert('Официальный установочный пакет AeroTerra H2 PWA готов к локальной установке через меню браузера «Установить приложение»!')}
+                    className="px-6 py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs uppercase tracking-wider flex items-center gap-2.5 transition-all"
+                  >
+                    <i data-lucide="download" className="w-4 h-4"></i>
+                    <span>📦 Оффлайн Пакет PWA</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ===================================================================
+              SECTION 8: NEON CLOUD & VERCEL ARCHITECTURE
               =================================================================== */}
           <section id="cloud" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-slate-800/80">
             <div className="glass-card rounded-3xl p-8 sm:p-12 border-cyan-500/30 bg-gradient-to-br from-slate-900/90 via-[#060b16] to-slate-900/80">

@@ -230,16 +230,25 @@
         side: THREE.DoubleSide
       });
 
-      // Create geometry buffers for ribbon trails
+      // Clean particle-based or safe line strip for wingtip condensation (no zero-vertex triangle artifacts)
       this.trailLeftGeo = new THREE.BufferGeometry();
       this.trailRightGeo = new THREE.BufferGeometry();
 
-      const maxVerts = this.maxVortexPoints * 2 * 3;
-      this.trailLeftGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(maxVerts), 3));
+      const maxVerts = this.maxVortexPoints * 3;
+      const initialPos = new Float32Array(maxVerts);
+      this.trailLeftGeo.setAttribute('position', new THREE.BufferAttribute(initialPos, 3));
       this.trailRightGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(maxVerts), 3));
 
-      this.trailLeftMesh = new THREE.Mesh(this.trailLeftGeo, trailMat.clone());
-      this.trailRightMesh = new THREE.Mesh(this.trailRightGeo, trailMat.clone());
+      const pointsMat = new THREE.PointsMaterial({
+        color: 0xe0f2fe,
+        size: 3.5,
+        transparent: true,
+        opacity: 0.65,
+        blending: THREE.AdditiveBlending
+      });
+
+      this.trailLeftMesh = new THREE.Points(this.trailLeftGeo, pointsMat);
+      this.trailRightMesh = new THREE.Points(this.trailRightGeo, pointsMat.clone());
 
       scene.add(this.trailLeftMesh);
       scene.add(this.trailRightMesh);
@@ -260,12 +269,12 @@
       const shouldSpawnVortex = (isHighGTurn || isHighAoA) && hasSpeed;
 
       const now = performance.now();
-      if (now - this.lastVortexSpawnTime > 35 && shouldSpawnVortex) {
+      if (now - this.lastVortexSpawnTime > 40 && shouldSpawnVortex) {
         this.lastVortexSpawnTime = now;
 
         // Wingtip offsets in body frame
-        const leftWingLocal = new THREE.Vector3(-wingspanHalf, 0.45, -0.6);
-        const rightWingLocal = new THREE.Vector3(wingspanHalf, 0.45, -0.6);
+        const leftWingLocal = new THREE.Vector3(-wingspanHalf, 0.55, -0.2);
+        const rightWingLocal = new THREE.Vector3(wingspanHalf, 0.55, -0.2);
 
         leftWingLocal.applyQuaternion(planeQuaternion).add(planeWorldPos);
         rightWingLocal.applyQuaternion(planeQuaternion).add(planeWorldPos);
@@ -279,9 +288,9 @@
         if (this.vortexHistory.right.length > this.maxVortexPoints) this.vortexHistory.right.pop();
       }
 
-      // Age trails and fade
+      // Age trails and update point buffer (clean points, zero mesh corruption)
       const updateTrail = (history, mesh, geo) => {
-        if (!history || history.length < 2) {
+        if (!history || history.length === 0) {
           mesh.visible = false;
           return;
         }
@@ -291,25 +300,20 @@
         const posArr = posAttr.array;
         let vIdx = 0;
 
-        for (let i = 0; i < history.length - 1; i++) {
+        for (let i = 0; i < history.length; i++) {
           const pt = history[i];
           pt.age += dt;
 
-          const width = 0.22 * pt.intensity * (1.0 + pt.age * 1.5);
           posArr[vIdx++] = pt.pos.x;
-          posArr[vIdx++] = pt.pos.y - width / 2;
-          posArr[vIdx++] = pt.pos.z;
-
-          posArr[vIdx++] = pt.pos.x;
-          posArr[vIdx++] = pt.pos.y + width / 2;
+          posArr[vIdx++] = pt.pos.y;
           posArr[vIdx++] = pt.pos.z;
         }
 
-        geo.setDrawRange(0, (history.length - 1) * 2);
+        geo.setDrawRange(0, history.length);
         posAttr.needsUpdate = true;
 
         // Prune old
-        while (history.length > 0 && history[history.length - 1].age > 1.8) {
+        while (history.length > 0 && history[history.length - 1].age > 1.4) {
           history.pop();
         }
       };

@@ -364,6 +364,9 @@
       <!-- Quick Action Buttons -->
       <div class="sim-top-actions-group">
         <!-- Fast Scenario Teleport Buttons -->
+        <button class="sim-top-btn teleport-btn towers-btn" id="btn-teleport-towers" title="Телепорт прямо к створу Двух Башен Ташкент-Сити (Высота 450 м, скорость 190 км/ч)">
+          <i class="fa-solid fa-city"></i> <span>🏙️ К Двум Башням (Ташкент-Сити)</span>
+        </button>
         <button class="sim-top-btn teleport-btn" id="btn-teleport-freeflight" title="Прыжок в свободный полёт (Высота 700 м, скорость 160 км/ч)">
           <i class="fa-solid fa-plane"></i> <span>✈️ Полёт 700 м</span>
         </button>
@@ -380,8 +383,8 @@
           <i class="fa-solid fa-plane-arrival"></i> <span>🛬 Заход ILS</span>
         </button>
 
-        <button class="sim-top-btn primary" id="btn-sim-auto-takeoff" title="Автоматический взлёт с ВПП (Разбег, закрылки 15°, подъём на 150 м)">
-          <i class="fa-solid fa-plane-departure"></i> <span>🛫 АВТО-ВЗЛЁТ С ВПП</span>
+        <button class="sim-top-btn primary ap-master-btn" id="btn-sim-ap-master" title="🤖 АВТОПИЛОТ (AP MASTER): Авто-выравнивание, эшелон 700 м, 210 км/ч, навигация над Ташкентом">
+          <i class="fa-solid fa-robot"></i> <span id="lbl-ap-master">🤖 АВТОПИЛОТ (AP MASTER)</span>
         </button>
         <button class="sim-top-btn" id="btn-sim-sound" title="Звук двигателя (Web Audio API)">
           <i class="fa-solid fa-volume-high" id="sim-sound-icon"></i>
@@ -549,7 +552,18 @@
     <div class="sim-crash-warning" id="sim-crash-warning" style="display: none;">
       <i class="fa-solid fa-skull-crossbones"></i>
       <span id="sim-crash-text">💥 КРУШЕНИЕ (0 м): ШАССИ НЕ ВЫПУЩЕНЫ! АВАРИЙНАЯ ПОСАДКА НА ФЮЗЕЛЯЖ</span>
-      <button class="btn-crash-restart" id="btn-crash-restart">🔄 Сброс и перезапуск полёта (700 м)</button>
+      <div class="crash-actions-btns">
+        <button class="btn-crash-extinguish" id="btn-extinguish-fire" title="Включить бортовую систему пожаротушения">
+          <i class="fa-solid fa-fire-extinguisher"></i> <span>🚒 Включить Систему Пожаротушения Борта</span>
+        </button>
+        <button class="btn-crash-restart" id="btn-crash-restart">🔄 Сброс и перезапуск полёта (700 м)</button>
+      </div>
+    </div>
+
+    <!-- Smart Autopilot HUD Status Badge -->
+    <div class="hud-ap-master-badge" id="hud-ap-master-badge" style="display: none;">
+      <span class="ap-pulse-dot"></span>
+      <span>🤖 [AP MASTER: ACTIVE | ALT 700M | SPD 210KMH | NAV TASHKENT]</span>
     </div>
 
     <!-- Mission & Action Notification Toast -->
@@ -697,16 +711,29 @@
           </div>
         </div>
 
-        <!-- Row 2: Mechanics & Mission Specials -->
+        <!-- Row 2: Dedicated Landing Gear Controls & LED Status (Boeing/Airbus Style) -->
+        <div class="sim-ctrl-row gear-ctrl-row">
+          <span class="ctrl-row-label"><i class="fa-solid fa-circle-notch"></i> ШАССИ (GEAR):</span>
+          <div class="ctrl-buttons-group gear-group">
+            <button class="sim-act-btn gear-btn-action active" id="btn-gear-down" title="Выпустить шасси (Клавиша G)">
+              <i class="fa-solid fa-arrow-down"></i> <span>🟢 ВЫПУСТИТЬ ШАССИ (ОТКРЫТЬ / G)</span>
+            </button>
+            <button class="sim-act-btn gear-btn-action" id="btn-gear-up" title="Убрать шасси (Клавиша G)">
+              <i class="fa-solid fa-arrow-up"></i> <span>🔴 УБРАТЬ ШАССИ (ЗАКРЫТЬ / G)</span>
+            </button>
+            <div class="gear-led-status-box">
+              <span class="gear-led-pill green" id="gear-led-nose">🟢 NOSE</span>
+              <span class="gear-led-pill green" id="gear-led-left">🟢 LEFT</span>
+              <span class="gear-led-pill green" id="gear-led-right">🟢 RIGHT</span>
+              <span class="gear-status-txt" id="gear-status-msg">3 GREEN: DOWN &amp; LOCKED</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2B: Mechanics & Mission Specials -->
         <div class="sim-ctrl-row">
           <span class="ctrl-row-label"><i class="fa-solid fa-gears"></i> МЕХАНИЗАЦИЯ:</span>
           <div class="ctrl-buttons-group">
-            <button class="sim-act-btn primary" id="btn-act-takeoff" title="Авто-взлёт с полосы (100% тяга, закрылки 15°, набор 150 м)">
-              <i class="fa-solid fa-plane-departure"></i> <span>🛫 Авто-Взлёт</span>
-            </button>
-            <button class="sim-act-btn active" id="btn-act-gear" title="Убрать / выпустить шасси (Клавиша G)">
-              <i class="fa-solid fa-circle-dot"></i> <span id="lbl-gear">🟢 Шасси (G)</span>
-            </button>
             <button class="sim-act-btn" id="btn-act-flaps" title="Закрылки 0° / 15° / 35° (Клавиша F)">
               <i class="fa-solid fa-feather-pointed"></i> <span id="lbl-flaps">📐 Закрылки 0° (F)</span>
             </button>
@@ -719,8 +746,11 @@
             <button class="sim-act-btn btn-spray" id="btn-act-spray" title="Включить ультрадисперсное опрыскивание садов (Клавиша X)">
               <i class="fa-solid fa-spray-can-sparkles"></i> <span id="lbl-spray">🌿 Спрей (X)</span>
             </button>
-            <button class="sim-act-btn" id="btn-act-aero" title="Показать 3D-векторы подъёмной силы, тяги и сопротивления (Клавиша V)">
-              <i class="fa-solid fa-wind"></i> <span>🌬️ Аэродинамика (V)</span>
+            <button class="sim-act-btn" id="btn-act-aero" title="Показать 4 3D-вектора сил: Подъёмная, Тяга, Сопротивление, Вес (Клавиша V)">
+              <i class="fa-solid fa-wind"></i> <span>🌬️ Аэродинамика 4 Сил (V)</span>
+            </button>
+            <button class="sim-act-btn btn-fire-test" id="btn-test-engine-fire" title="Имитация пожара правого двигателя и проверка системы тушения">
+              <i class="fa-solid fa-fire"></i> <span>🔥 Тест Пожара Двигателя</span>
             </button>
           </div>
         </div>
@@ -954,6 +984,9 @@
           Посадка на фюзеляж с невыпущенными шасси (Gear UP) или критическое превышение вертикальной скорости удара о ВПП!
         </div>
         <div class="sim-crash-btn-row">
+          <button class="sim-crash-btn extinguish" id="btn-crash-modal-extinguish">
+            <i class="fa-solid fa-fire-extinguisher"></i> <span>🚒 Включить Систему Пожаротушения Борта</span>
+          </button>
           <button class="sim-crash-btn primary" id="btn-crash-modal-restart-air">
             <i class="fa-solid fa-plane-up"></i> <span>Восстановить в воздухе (700 м)</span>
           </button>
@@ -1833,7 +1866,7 @@
               <div class="stage-badge-status"><i class="fa-solid fa-award"></i> TRL 9: СЕРИЯ 2028</div>
               <div class="stage-title">Net Zero Коммерческий Флот</div>
               <p class="stage-desc">
-                Массовое внедрение в агрохолдинги и лесную охрану с экономией 78% эксплуатационных расходов и нулевым $CO_2$.
+                Массовое внедрение в агрохолдинги и лесную охрану с экономией 78% эксплуатационных расходов и нулевым CO₂.
               </p>
               <div class="stage-footer">Цель: IATA Net Zero 2050</div>
             </div>
@@ -2419,8 +2452,8 @@
     <div style="background: rgba(14,26,54,0.6); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
       <h3 style="color: #ff4d00; font-size: 16px; margin-top: 0;">3. ЭКОЛОГИЧЕСКИЙ И ЭКОНОМИЧЕСКИЙ ЭФФЕКТ</h3>
       <p>• Снижение себестоимости лётного часа в <strong>4.5 раза</strong> относительно самолётов Ан-2 и вертолётов Ми-2.</p>
-      <p>• Полное отсутствие токсичных выбросов: $CO_2 = 0$, $NO_x = 0$, сажа = 0. Выхлоп — чистая вода ($H_2O$).</p>
-      <p>• Предотвращение выброса до <strong>285 тонн $CO_2$</strong> ежегодно на один борт.</p>
+      <p>• Полное отсутствие токсичных выбросов: CO₂ = 0, NOₓ = 0, сажа = 0. Выхлоп — чистая вода (H₂O).</p>
+      <p>• Предотвращение выброса до <strong>285 тонн CO₂</strong> ежегодно на один борт.</p>
     </div>
 
     <div style="display: flex; justify-content: space-between; margin-top: 40px; border-top: 1px dashed #54657e; padding-top: 20px; font-size: 13px; color: #8b9bb4;">
