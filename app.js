@@ -751,7 +751,7 @@
     if (isPortrait) {
       camera.position.set(14, 11, 18);
     } else {
-      camera.position.set(11, 6.5, 13);
+      camera.position.set(10, 6, 12);
     }
 
     // OrbitControls
@@ -761,7 +761,7 @@
     controls.maxPolarAngle = Math.PI / 2 + 0.05; // don't go below floor
     controls.minDistance = 3;
     controls.maxDistance = 45;
-    controls.target.set(0, 0.5, 0);
+    controls.target.set(0, 1, 0);
 
     // Raycasting & Mouse
     raycaster = new THREE.Raycaster();
@@ -805,12 +805,15 @@
   }
 
   function setupLighting() {
-    // 1. Ambient Hemisphere Light (aerospace sky-to-ground natural fill)
+    // 1. Ambient Hemisphere & General Ambient Fill Light
     const hemiLight = new THREE.HemisphereLight(0xf0f7ff, 0x0a1424, 1.8);
     scene.add(hemiLight);
 
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+    scene.add(ambientLight);
+
     // 2. Main Key Directional Sunlight (sharp specular highlights on Class-A curves)
-    const sunLight = new THREE.DirectionalLight(0xffffff, 2.8);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 2.2);
     sunLight.position.set(14, 24, 12);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
@@ -2317,9 +2320,8 @@
   function animate() {
     requestAnimationFrame(animate);
 
-    // Stop Hangar WebGL render when user is on another tab (e.g. Flight Simulator) to prevent GPU lag!
-    const hangarSection = document.getElementById('hangar-section');
-    if (!hangarSection || !hangarSection.classList.contains('active')) {
+    // Stop Hangar WebGL render ONLY when user is in fullscreen Flight Simulator to prevent GPU contention
+    if (document.body.classList.contains('in-simulator-mode')) {
       return;
     }
 
@@ -2542,7 +2544,9 @@
   function onWindowResize() {
     const container = document.getElementById('hangar-section');
     if (!container || !renderer || !camera) return;
-    const aspect = container.clientWidth / container.clientHeight;
+    const w = container.clientWidth || window.innerWidth;
+    const h = container.clientHeight || Math.max(window.innerHeight - 70, 400);
+    const aspect = w / Math.max(h, 1);
     camera.aspect = aspect;
     if (aspect < 0.85) {
       // На вертикальном экране смартфона увеличиваем угол обзора и отодвигаем камеру дальше,
@@ -2550,13 +2554,14 @@
       camera.fov = 68;
       if (!isZoomedToNode) {
         camera.position.set(14, 11, 18);
-        if (controls) controls.target.set(0, 0.5, 0);
+        if (controls) controls.target.set(0, 1, 0);
       }
     } else {
       camera.fov = 45;
     }
     camera.updateProjectionMatrix();
-    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setSize(w, h);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   }
 
   // --------------------------------------------------------------------------
@@ -3273,6 +3278,22 @@
               if (earthSec) {
                 earthSec.classList.remove('active');
                 if (window.AeroTerraEarth && window.AeroTerraEarth.onHide) window.AeroTerraEarth.onHide();
+              }
+
+              if (href === '#hangar-section') {
+                const hangarContainer = document.getElementById('hangar-section');
+                if (hangarContainer) {
+                  hangarContainer.classList.add('active');
+                  hangarContainer.style.display = 'flex';
+                }
+                onWindowResize();
+                if (controls) {
+                  controls.target.set(0, 1, 0);
+                  controls.update();
+                }
+                setTimeout(() => {
+                  onWindowResize();
+                }, 50);
               }
               target.scrollIntoView({ behavior: 'smooth' });
             }

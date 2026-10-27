@@ -8044,6 +8044,11 @@ body.in-simulator-mode .hangar-hud-overlay {
   flex-wrap: nowrap !important;
 }
 
+#sim-aoa-deg {
+  font-size: 1.05rem !important;
+  white-space: nowrap !important;
+}
+
 .telem-val-group {
   display: flex !important;
   flex-direction: row !important;

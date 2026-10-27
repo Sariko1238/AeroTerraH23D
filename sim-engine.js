@@ -228,7 +228,7 @@
     pitchInput: 0,
     rollInput: 0,
     yawInput: 0,
-    throttle: 0.75,
+    throttle: 0.80,
 
     // Airspeeds & Altitude
     tas: 50.0,        // m/s
@@ -1642,11 +1642,12 @@
 
     const lines = new THREE.LineSegments(geo, mat);
     speedLinesGroup.add(lines);
+    speedLinesGroup.visible = false; // Disabled by user request (clean cockpit view without diagonal wind streaks)
     scene.add(speedLinesGroup);
   }
 
   function updateSpeedLines(dt, speedMs) {
-    if (!speedLinesGroup || !speedLinesGroup.children.length) return;
+    if (!speedLinesGroup || !speedLinesGroup.visible) return;
     const positions = speedLinesGroup.children[0].geometry.attributes.position.array;
     const planeY = planeGroup ? planeGroup.position.y : 0;
     speedLinesGroup.position.set(0, planeY, 0);
@@ -1788,10 +1789,10 @@
     atcGroup.add(atcRadarDish);
     sceneryGroup.add(atcGroup);
 
-    // 3. 3D Trees in Agro-Monitoring Sector (Fruit Orchard & Forestry Rows)
-    const treeTrunkGeo = new THREE.CylinderGeometry(0.3, 0.45, 3.2, 6);
+    // 3. 3D Trees in Agro-Monitoring Sector (Proportional Human-Scale Orchard on Ground Level y = 0)
+    const treeTrunkGeo = new THREE.CylinderGeometry(0.12, 0.18, 1.2, 6);
     const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x45220a, roughness: 0.9 });
-    const treeFoliageGeo = new THREE.ConeGeometry(2.6, 5.5, 6);
+    const treeFoliageGeo = new THREE.ConeGeometry(0.8, 1.8, 6);
     const treeFoliageMat = new THREE.MeshStandardMaterial({ color: 0x1e5c24, roughness: 0.8 });
     const treeFoliageMat2 = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.8 });
 
@@ -1800,46 +1801,21 @@
 
     for (let row = 0; row < 12; row++) {
       for (let col = 0; col < 10; col++) {
-        const tx = 380 + col * 26 + (Math.random() - 0.5) * 6;
-        const tz = 160 + row * 32 + (Math.random() - 0.5) * 6;
+        const tx = 280 + col * 18 + (Math.random() - 0.5) * 4;
+        const tz = 160 + row * 22 + (Math.random() - 0.5) * 4;
 
         const trunk = new THREE.Mesh(treeTrunkGeo, treeTrunkMat);
-        trunk.position.set(tx, 1.6, tz);
+        trunk.position.set(tx, 0.6, tz);
 
         const fol = new THREE.Mesh(treeFoliageGeo, (row + col) % 2 === 0 ? treeFoliageMat : treeFoliageMat2);
-        fol.position.set(0, 3.6, 0);
+        fol.position.set(0, 1.4, 0);
         trunk.add(fol);
 
         treesGroup.add(trunk);
       }
     }
+    treesGroup.position.y = 0; // Strictly on ground level
     sceneryGroup.add(treesGroup);
-
-    // 4. 3D Mountain Horizon Perimeter (24 Rugged Peaks)
-    const mountainsGroup = new THREE.Group();
-    mountainsGroup.name = 'HorizonMountains';
-    const mtnRockMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.95 });
-    const mtnSnowMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.4 });
-
-    for (let m = 0; m < 24; m++) {
-      const angle = (m / 24) * Math.PI * 2;
-      const dist = 4200 + Math.sin(m * 3) * 500;
-      const mx = Math.cos(angle) * dist;
-      const mz = Math.sin(angle) * dist;
-      const h = 850 + Math.abs(Math.sin(m * 2.5)) * 1200;
-      const baseR = 400 + Math.random() * 250;
-
-      const mtnMesh = new THREE.Mesh(new THREE.ConeGeometry(baseR, h, 7), mtnRockMat);
-      mtnMesh.position.set(mx, h / 2, mz);
-
-      // Snow Cap
-      const snowCap = new THREE.Mesh(new THREE.ConeGeometry(baseR * 0.35, h * 0.32, 7), mtnSnowMat);
-      snowCap.position.set(0, h * 0.35, 0);
-      mtnMesh.add(snowCap);
-
-      mountainsGroup.add(mtnMesh);
-    }
-    sceneryGroup.add(mountainsGroup);
 
     // 5. 3D Wildfire Zone with Fire & Rising Smoke (at X = -650, Z = 750)
     const fireGroup = new THREE.Group();
@@ -3375,7 +3351,7 @@
     const gLoadEl = document.getElementById('sim-gload-val');
     const aoaVal = safeClamp(flight.aoa, -12.0, 20.0, 2.5);
     if (aoaEl) {
-      aoaEl.textContent = `AoA: ${aoaVal >= 0 ? '+' : ''}${aoaVal.toFixed(1)}° STABLE`;
+      aoaEl.textContent = `AoA: ${aoaVal >= 0 ? '+' : ''}${aoaVal.toFixed(1)}° OK`;
     }
     if (rollEl) {
       const rollDeg = safeClamp(flight.rot.z * 180 / Math.PI, -60, 60, 0);
@@ -3740,13 +3716,13 @@
     airgatesGroup.name = 'AirgatesSlalomGroup';
     airgatesList = [];
 
-    // 5 Slalom Airgates stretching ahead of starting point in the valley
+    // 5 Slalom Airgates stretching ahead of starting point in the valley (Positive Z = ahead of nose)
     const gateCoords = [
-      { x: 0,   y: 700, z: -400,  rotY: 0 },
-      { x: 60,  y: 680, z: -900,  rotY: 0.12 },
-      { x: -50, y: 660, z: -1450, rotY: -0.10 },
-      { x: 40,  y: 640, z: -2050, rotY: 0.08 },
-      { x: 0,   y: 620, z: -2700, rotY: 0 }
+      { x: 0,   y: 700, z: 400,  rotY: 0 },
+      { x: 50,  y: 680, z: 900,  rotY: 0.08 },
+      { x: -40, y: 660, z: 1450, rotY: -0.06 },
+      { x: 30,  y: 640, z: 2050, rotY: 0.05 },
+      { x: 0,   y: 620, z: 2700, rotY: 0 }
     ];
 
     gateCoords.forEach((coord, idx) => {
@@ -3914,16 +3890,16 @@
     flight.pos.set(0, 1.25, 0);
     flight.altMSL = 700;
     flight.altAGL = 700;
-    const speedMs = 160 / 3.6; // 160 km/h
+    const speedMs = 180 / 3.6; // 180 km/h
     flight.vel.set(0, 0, speedMs);
     flight.rot.set(0, 0, 0);
     flight.vsi = 0;
-    flight.throttle = 0.75; // 75%
-    flight.propRpm = 600 + 0.75 * 2400;
+    flight.throttle = 0.80; // 80%
+    flight.propRpm = 600 + 0.80 * 2400;
     flight.aoa = 0;
-    flight.ias = 160;
+    flight.ias = 180;
     flight.tas = speedMs;
-    flight.kts = 160 * 0.539957;
+    flight.kts = 180 * 0.539957;
     flight.pitchInput = 0;
     flight.rollInput = 0;
     flight.yawInput = 0;
@@ -3966,17 +3942,17 @@
 
     const thrSlider = document.getElementById('sim-slider-throttle');
     const thrValEl = document.getElementById('sim-throttle-val');
-    if (thrSlider) thrSlider.value = 75;
-    if (thrValEl) thrValEl.textContent = '75%';
+    if (thrSlider) thrSlider.value = 80;
+    if (thrValEl) thrValEl.textContent = '80%';
     const thrFill = document.getElementById('touch-throttle-fill');
     const thrHandle = document.getElementById('touch-throttle-handle');
     const thrPctLabel = document.getElementById('touch-throttle-pct');
-    if (thrFill) thrFill.style.height = '75%';
-    if (thrHandle) thrHandle.style.bottom = '75%';
-    if (thrPctLabel) thrPctLabel.textContent = '75%';
+    if (thrFill) thrFill.style.height = '80%';
+    if (thrHandle) thrHandle.style.bottom = '80%';
+    if (thrPctLabel) thrPctLabel.textContent = '80%';
     document.querySelectorAll('.btn-thr-preset').forEach(b => b.classList.remove('active'));
 
-    showToast('✈️ В ПОЛЁТЕ: ВЫСОТА 700 М, СКОРОСТЬ 160 КМ/Ч, ТЯГА 75%');
+    showToast('✈️ В ПОЛЁТЕ: ВЫСОТА 700 М, СКОРОСТЬ 180 КМ/Ч, ТЯГА 80%');
   }
 
   function teleportToLocation(locKey, targetAlt = 700) {
@@ -3991,7 +3967,10 @@
     flight.altAGL = targetAlt;
     flight.vel.set(0, 0, 50); // 180 km/h forward
     flight.rot.set(0, 0, 0);
-    flight.throttle = 0.75;
+    flight.throttle = 0.80;
+    flight.ias = 180;
+    flight.tas = 50.0;
+    flight.kts = 180 * 0.539957;
     flight.gearTarget = 0.0;
     flight.flapsStage = 0;
     flight.spoilersActive = false;
@@ -5592,32 +5571,33 @@
     } else {
       updatePhysics(dt);
 
-      // Continuous Procedural Flight Motion of Terrain & Speed Lines
-      const speedMs = Math.max(flight.ias, 0) / 3.6;
-      const hdgRad = THREE.MathUtils.degToRad(((-flight.rot.y * 180 / Math.PI) % 360 + 360) % 360);
-      const moveX = Math.sin(hdgRad) * speedMs * dt;
-      const moveZ = Math.cos(hdgRad) * speedMs * dt;
+      // Continuous Procedural Flight Motion of Terrain (Strict Forward Flight Alignment)
+      const hdgDeg = ((-flight.rot.y * 180 / Math.PI) % 360 + 360) % 360;
+      const hdgRad = THREE.MathUtils.degToRad(hdgDeg);
+      const forwardSpeed = Math.max(flight.ias, 40) / 3.6; // всегда > 0, никогда не летит назад!
+
+      // Двигаем мир строго НАВСТРЕЧУ носу самолёта:
+      const stepX = Math.sin(hdgRad) * forwardSpeed * dt;
+      const stepZ = Math.cos(hdgRad) * forwardSpeed * dt;
 
       if (worldGroup) {
-        worldGroup.position.x -= moveX * 3.5;
-        worldGroup.position.z += moveZ * 3.5;
+        worldGroup.position.x -= stepX * 3.5;
+        worldGroup.position.z -= stepZ * 3.5;
         worldGroup.position.y = -flight.altAGL;
 
         const tileStep = 2000;
         if (Math.abs(worldGroup.position.x) > tileStep) worldGroup.position.x %= tileStep;
         if (Math.abs(worldGroup.position.z) > tileStep) worldGroup.position.z %= tileStep;
       } else if (terrainGroup) {
-        terrainGroup.position.x -= moveX * 3.5;
-        terrainGroup.position.z += moveZ * 3.5;
+        terrainGroup.position.x -= stepX * 3.5;
+        terrainGroup.position.z -= stepZ * 3.5;
         terrainGroup.position.y = -flight.altAGL;
       }
 
       if (groundCanvasTexture) {
-        groundCanvasTexture.offset.x -= (moveX * 0.005);
-        groundCanvasTexture.offset.y -= (moveZ * 0.005);
+        groundCanvasTexture.offset.x -= (stepX * 0.005);
+        groundCanvasTexture.offset.y -= (stepZ * 0.005);
       }
-
-      updateSpeedLines(dt, speedMs);
 
       if (window.FlightRecorder) {
         window.FlightRecorder.recordFrame(flight);

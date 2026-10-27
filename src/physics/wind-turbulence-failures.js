@@ -15,7 +15,7 @@
       this.windDirection = 90.0;  // degrees (coming from East by default)
       this.crosswindActive = false;
       this.crosswindSpeed = 18.0; // 18 m/s severe crosswind test
-      this.turbulenceIntensity = 0.15; // 0..1 scale
+      this.turbulenceIntensity = 0.0; // 0 by default (strictly zero wind drift)
       this.thermalLift = 0.0;     // m/s vertical air column
 
       // Failures Matrix
