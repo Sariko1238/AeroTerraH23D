@@ -316,11 +316,11 @@
 
       <!-- Controls & Dropdowns Group -->
       <div class="sim-top-selects-group">
-        <!-- 1. Aircraft Selection -->
-        <div class="sim-select-wrap" title="Выбор модели самолёта">
+        <!-- 1. Aircraft Selection (Prominent Dropdown in Top Bar) -->
+        <div class="sim-select-wrap sim-select-aircraft-wrap" title="Выбор модели самолёта">
           <i class="fa-solid fa-plane"></i>
           <select class="sim-select" id="aircraft-selector">
-            <option value="aeroterra" selected>✈️ AeroTerra H2 (STOL Twin-Boom 4x DEP)</option>
+            <option value="aeroterra" selected>✈️ AeroTerra H2 (Мой Самолёт — STOL H2-Hybrid)</option>
             <option value="a380">🛫 Airbus A380-800 Superjumbo</option>
             <option value="b777">🛩️ Boeing 777-300ER</option>
             <option value="agro">🌿 AeroTerra Agro-Sprayer (Штанги ULV)</option>
@@ -462,13 +462,80 @@
       </button>
     </div>
 
-    <div class="sim-fpv-center-wrap">
+    <!-- Garmin G1000 NXi / G3000 Collimated PFD Overlay (msfs-avionics-mirror) -->
+    <div class="sim-garmin-hud-overlay" id="sim-garmin-hud-overlay">
+      <!-- 1. Garmin Roll Scale Arc & Pointer -->
+      <div class="garmin-roll-scale-wrap" id="garmin-roll-scale-wrap">
+        <svg class="garmin-roll-svg" viewBox="-120 -40 240 60">
+          <!-- Horizon Reference Pip -->
+          <polygon points="0,-18 -4,-26 4,-26" fill="#00e5ff" />
+          <line x1="0" y1="-18" x2="0" y2="-8" stroke="#00e5ff" stroke-width="2" />
+          <!-- Roll Arc -->
+          <path d="M -95 10 A 100 100 0 0 1 95 10" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" />
+          <!-- Ticks at 10, 20, 30, 45, 60 deg -->
+          <line x1="-34" y1="-3" x2="-31" y2="4" stroke="#ffffff" stroke-width="1.5" />
+          <line x1="34" y1="-3" x2="31" y2="4" stroke="#ffffff" stroke-width="1.5" />
+          <line x1="-64" y1="5" x2="-59" y2="12" stroke="#ffffff" stroke-width="1.5" />
+          <line x1="64" y1="5" x2="59" y2="12" stroke="#ffffff" stroke-width="1.5" />
+          <polygon points="-86,18 -82,24 -90,24" fill="#ffffff" />
+          <polygon points="86,18 82,24 90,24" fill="#ffffff" />
+        </svg>
+        <!-- Dynamic Roll Pointer Triangle that rotates with airplane bank -->
+        <div class="garmin-roll-pointer" id="garmin-roll-pointer">
+          <div class="roll-triangle"></div>
+        </div>
+      </div>
+
+      <!-- 2. Garmin Pitch Ladder with Degree Numbers -->
+      <div class="garmin-pitch-ladder" id="garmin-pitch-ladder">
+        <div class="pitch-line pitch-pos-20"><span class="pitch-num">20</span><div class="p-bar-l"></div><div class="p-gap"></div><div class="p-bar-r"></div><span class="pitch-num">20</span></div>
+        <div class="pitch-line pitch-pos-10"><span class="pitch-num">10</span><div class="p-bar-l"></div><div class="p-gap"></div><div class="p-bar-r"></div><span class="pitch-num">10</span></div>
+        <div class="pitch-line pitch-pos-5"><div class="p-bar-l dashed"></div><div class="p-gap"></div><div class="p-bar-r dashed"></div></div>
+        <div class="pitch-line pitch-zero"><div class="p-horizon-l"></div><div class="p-horizon-center"></div><div class="p-horizon-r"></div></div>
+        <div class="pitch-line pitch-neg-5"><div class="p-bar-l dashed"></div><div class="p-gap"></div><div class="p-bar-r dashed"></div></div>
+        <div class="pitch-line pitch-neg-10"><span class="pitch-num">-10</span><div class="p-bar-l dashed"></div><div class="p-gap"></div><div class="p-bar-r dashed"></div><span class="pitch-num">-10</span></div>
+        <div class="pitch-line pitch-neg-20"><span class="pitch-num">-20</span><div class="p-bar-l dashed"></div><div class="p-gap"></div><div class="p-bar-r dashed"></div><span class="pitch-num">-20</span></div>
+      </div>
+
+      <!-- 3. MSFS Flight Director Magenta V-Bars (Command Director) -->
+      <div class="garmin-fd-vbars" id="garmin-fd-vbars">
+        <div class="fd-bar-left"></div>
+        <div class="fd-bar-right"></div>
+      </div>
+
+      <!-- 4. Flight Path Vector (FPV) Emerald Neon Reticle -->
       <div class="sim-fpv-marker" id="sim-fpv-marker">
         <div class="fpv-circle"></div>
         <div class="fpv-wing-left"></div>
         <div class="fpv-wing-right"></div>
         <div class="fpv-fin-top"></div>
-        <div class="fpv-pitch-ladder" id="sim-fpv-pitch-ladder"></div>
+      </div>
+
+      <!-- 5. Fixed Aircraft Reference Symbol (Yellow Center Cross) -->
+      <div class="garmin-aircraft-symbol">
+        <div class="ac-center-square"></div>
+        <div class="ac-wing-l"></div>
+        <div class="ac-wing-r"></div>
+      </div>
+
+      <!-- 6. ILS Localizer & Glideslope Magenta Diamonds -->
+      <div class="garmin-ils-scale" id="garmin-ils-scale" style="display: none;">
+        <div class="ils-gs-track">
+          <span class="ils-dot"></span>
+          <span class="ils-dot"></span>
+          <span class="ils-center-tick"></span>
+          <span class="ils-dot"></span>
+          <span class="ils-dot"></span>
+          <div class="ils-diamond" id="ils-gs-diamond">◆</div>
+        </div>
+        <div class="ils-loc-track">
+          <span class="ils-dot"></span>
+          <span class="ils-dot"></span>
+          <span class="ils-center-tick"></span>
+          <span class="ils-dot"></span>
+          <span class="ils-dot"></span>
+          <div class="ils-diamond" id="ils-loc-diamond">◆</div>
+        </div>
       </div>
     </div>
 
@@ -534,8 +601,8 @@
           <!-- AoA -->
           <div class="sim-telem-item">
             <span class="telem-label">УГОЛ АТАКИ (AoA):</span>
-            <b class="telem-main cyan" id="sim-aoa-deg">+2.5° OK</b>
-            <span class="telem-sub">OK</span>
+            <b class="telem-main cyan" id="sim-aoa-deg">AoA: +2.5° OK</b>
+            <span class="telem-sub" id="sim-aoa-sub"></span>
           </div>
 
           <!-- Roll -->

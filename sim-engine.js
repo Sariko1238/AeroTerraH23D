@@ -120,7 +120,7 @@
   // ----------------------------------------------------------------------------
   const PLANE_CONFIGS = {
     a380: {
-      name: 'Airbus A380-800 Super Heavy',
+      name: 'Airbus A380-800 Superjumbo',
       scale: 1.0,
       mass: 380000.0,
       wingspan: 36.0,
@@ -134,7 +134,7 @@
       maxSpeedKmh: 950
     },
     b777: {
-      name: 'Boeing 777-300ER Twin-Jet',
+      name: 'Boeing 777-300ER',
       scale: 1.0,
       mass: 240000.0,
       wingspan: 32.0,
@@ -148,7 +148,7 @@
       maxSpeedKmh: 940
     },
     aeroterra: {
-      name: 'AeroTerra H2 — Full-Scale',
+      name: 'AeroTerra H2 (Мой Самолёт — STOL H2-Hybrid)',
       scale: 1.0,
       mass: 1638.0,
       wingspan: 12.4,
@@ -161,7 +161,7 @@
       yawAuth: 1.4
     },
     full: {
-      name: 'AeroTerra H2 — Full-Scale',
+      name: 'AeroTerra H2 (Мой Самолёт — STOL H2-Hybrid)',
       scale: 1.0,
       mass: 1638.0,
       wingspan: 12.4,
@@ -704,7 +704,7 @@
   function switchAircraftModel(modelKey) {
     if (!planeGroup) return;
     SIM.planeModel = modelKey;
-    const cfg = PLANE_CONFIGS[modelKey] || PLANE_CONFIGS.full;
+    const cfg = PLANE_CONFIGS[modelKey] || PLANE_CONFIGS.aeroterra || PLANE_CONFIGS.full;
     buildAircraftMesh(modelKey);
     if (planeGroup) planeGroup.scale.setScalar(cfg.scale || 1.0);
     if (window.AeroDynamics) {
@@ -713,6 +713,10 @@
     if (window.AeroTerra6DOF) {
       window.AeroTerra6DOF.setAircraftModel(modelKey);
     }
+    ['aircraft-selector', 'sim-select-aircraft', 'sim-select-plane'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.value !== modelKey) el.value = modelKey;
+    });
     showToast(`САМОЛЁТ: ${cfg.name.toUpperCase()}`);
   }
 
@@ -3131,16 +3135,25 @@
   function updateCamera() {
     if (!camera || !planeGroup) return;
 
-    const planeCenter = new THREE.Vector3(0, 1.25, 0);
+    const hdgRad = flight.rot.y;
+    const planePos = planeGroup.position;
+    const isHeavy = (SIM.planeModel === 'a380' || SIM.planeModel === 'b777');
 
     if (SIM.cameraMode === 'chase') {
-      // Smooth third-person chase camera elevated so plane hovers clearly above HUD cards
-      const offset = new THREE.Vector3(0, 3.8, -13.5).applyQuaternion(flight.quat);
-      const targetCamPos = planeCenter.clone().add(offset);
-      camera.position.lerp(targetCamPos, 0.12);
+      // 1. Strict Chase Camera locked behind the tail along heading angle (No crab drift!)
+      const camDist = isHeavy ? 38.0 : 18.0;
+      const camHeight = isHeavy ? 10.5 : 5.2;
+      const lookDist = isHeavy ? 45.0 : 25.0;
 
-      const lookTarget = planeCenter.clone().add(new THREE.Vector3(0, -0.6, 6.0).applyQuaternion(flight.quat));
-      camera.lookAt(lookTarget);
+      camera.position.x = planePos.x - Math.sin(hdgRad) * camDist;
+      camera.position.z = planePos.z - Math.cos(hdgRad) * camDist;
+      camera.position.y = planePos.y + camHeight;
+
+      camera.lookAt(
+        planePos.x + Math.sin(hdgRad) * lookDist,
+        planePos.y + (isHeavy ? 2.5 : 1.2),
+        planePos.z + Math.cos(hdgRad) * lookDist
+      );
 
       if (SIM.cameraShakeTimer > 0) {
         SIM.cameraShakeTimer -= dt;
@@ -3151,26 +3164,34 @@
       }
 
     } else if (SIM.cameraMode === 'cockpit') {
-      // Inside pilot seat looking forward
-      const cockpitOffset = new THREE.Vector3(0, 0.45, 1.2).applyQuaternion(flight.quat);
-      camera.position.copy(planeCenter).add(cockpitOffset);
+      // 2. Cockpit / FPV Camera inside pilot seat looking strictly out windshield
+      const pilotForward = isHeavy ? 10.5 : 1.2;
+      const pilotHeight = isHeavy ? 2.9 : 1.35;
 
-      const forwardTarget = planeCenter.clone().add(new THREE.Vector3(0, 0.45, 50.0).applyQuaternion(flight.quat));
-      camera.lookAt(forwardTarget);
+      camera.position.x = planePos.x + Math.sin(hdgRad) * pilotForward;
+      camera.position.z = planePos.z + Math.cos(hdgRad) * pilotForward;
+      camera.position.y = planePos.y + pilotHeight;
+
+      const forwardDist = 60.0;
+      camera.lookAt(
+        planePos.x + Math.sin(hdgRad) * forwardDist,
+        planePos.y + pilotHeight - flight.rot.x * 25.0,
+        planePos.z + Math.cos(hdgRad) * forwardDist
+      );
 
     } else if (SIM.cameraMode === 'satellite') {
-      // Top-down satellite view looking directly at the terrain & plane
-      camera.position.set(0, 1.25 + 1200, -200);
-      camera.lookAt(planeCenter);
+      // 3. Top-down satellite view looking directly at terrain & plane
+      camera.position.set(planePos.x, planePos.y + 1200, planePos.z - 200);
+      camera.lookAt(planePos);
 
     } else if (SIM.cameraMode === 'orbit') {
-      // Mouse draggable orbit camera around aircraft
-      const dist = 14.0;
+      // 4. Mouse draggable orbit camera around aircraft
+      const dist = isHeavy ? 35.0 : 16.0;
       const ox = dist * Math.sin(orbitYaw) * Math.cos(orbitPitch);
       const oy = dist * Math.sin(orbitPitch);
       const oz = dist * Math.cos(orbitYaw) * Math.cos(orbitPitch);
-      camera.position.set(ox, 1.25 + oy, oz);
-      camera.lookAt(planeCenter);
+      camera.position.set(planePos.x + ox, planePos.y + 1.25 + oy, planePos.z + oz);
+      camera.lookAt(planePos);
     }
   }
 
@@ -3345,13 +3366,19 @@
       else modeBadge.textContent = 'STOL CRUISE';
     }
 
-    // 3. AoA and Roll
+    // 3. AoA and Roll (Strictly single "OK", no duplicate OK OK)
     const aoaEl = document.getElementById('sim-aoa-deg');
+    const aoaSubEl = document.getElementById('sim-aoa-sub');
     const rollEl = document.getElementById('sim-roll-deg');
     const gLoadEl = document.getElementById('sim-gload-val');
     const aoaVal = safeClamp(flight.aoa, -12.0, 20.0, 2.5);
     if (aoaEl) {
-      aoaEl.textContent = `AoA: ${aoaVal >= 0 ? '+' : ''}${aoaVal.toFixed(1)}° OK`;
+      const isStall = Math.abs(aoaVal) > 16.0;
+      aoaEl.textContent = `AoA: ${aoaVal >= 0 ? '+' : ''}${aoaVal.toFixed(1)}° ${isStall ? 'STALL' : 'OK'}`;
+      aoaEl.className = isStall ? 'telem-main red' : 'telem-main cyan';
+    }
+    if (aoaSubEl) {
+      aoaSubEl.textContent = '';
     }
     if (rollEl) {
       const rollDeg = safeClamp(flight.rot.z * 180 / Math.PI, -60, 60, 0);
@@ -3405,12 +3432,68 @@
       radarCoords.textContent = `${curLat.toFixed(4)}° N, ${curLon.toFixed(4)}° E`;
     }
 
-    // 7. FPV Reticle & Pitch Ladder (moves UP when nose pitches up)
+    // 7. Garmin G1000 NXi / G3000 PFD HUD Instruments (microsoft/msfs-avionics-mirror)
+    const rollPointer = document.getElementById('garmin-roll-pointer');
+    const pitchLadder = document.getElementById('garmin-pitch-ladder');
+    const fdVbars = document.getElementById('garmin-fd-vbars');
     const fpvWrap = document.getElementById('sim-fpv-marker');
+    const rollDegAv = -flight.rot.z * (180 / Math.PI);
+    const pitchPx = THREE.MathUtils.clamp(flight.rot.x * 240, -120, 120);
+
+    // Roll Pointer & Pitch Ladder
+    if (rollPointer) {
+      rollPointer.style.transform = `rotate(${rollDegAv}deg)`;
+    }
+    if (pitchLadder) {
+      pitchLadder.style.transform = `translate(-50%, calc(-50% + ${pitchPx}px)) rotate(${rollDegAv}deg)`;
+    }
+
+    // Flight Path Vector (FPV)
     if (fpvWrap) {
-      const pitchPx = THREE.MathUtils.clamp(flight.rot.x * 260, -120, 120);
-      const rollDeg = -flight.rot.z * 180 / Math.PI;
-      fpvWrap.style.transform = `translate(-50%, calc(-50% + ${pitchPx}px)) rotate(${rollDeg}deg)`;
+      const fpvX = THREE.MathUtils.clamp((flight.vel.x / Math.max(1, flight.tas)) * 110, -75, 75);
+      const fpvY = THREE.MathUtils.clamp(-flight.vsi * 2.4, -60, 60);
+      fpvWrap.style.transform = `translate(calc(-50% + ${fpvX}px), calc(-50% + ${fpvY}px)) rotate(${rollDegAv}deg)`;
+    }
+
+    // Flight Director Magenta V-Bars targeting the next active Airgate
+    if (fdVbars) {
+      let fdPitch = 0;
+      let fdRoll = 0;
+      const activeGate = airgatesList ? airgatesList.find(g => !g.collected) : null;
+      if (activeGate && activeGate.group) {
+        activeGate.group.getWorldPosition(_gateWorldPos);
+        const relX = _gateWorldPos.x - planeGroup.position.x;
+        const relY = _gateWorldPos.y - (planeGroup.position.y + flight.altAGL);
+        const relZ = _gateWorldPos.z - planeGroup.position.z;
+        const targetHdg = (Math.atan2(relX, relZ) * 180 / Math.PI + 360) % 360;
+        let hdgDiff = targetHdg - hdgDeg;
+        if (hdgDiff > 180) hdgDiff -= 360;
+        if (hdgDiff < -180) hdgDiff += 360;
+
+        fdRoll = THREE.MathUtils.clamp(-hdgDiff * 1.2, -30, 30);
+        const distHoriz = Math.hypot(relX, relZ);
+        const elevDeg = Math.atan2(relY, Math.max(10, distHoriz)) * 180 / Math.PI;
+        fdPitch = THREE.MathUtils.clamp(elevDeg * 1.5, -15, 15);
+      } else if (SIM.apMode.level) {
+        fdRoll = 0;
+        fdPitch = 0;
+      }
+      fdVbars.style.transform = `translate(-50%, calc(-50% - ${fdPitch * 4.5}px)) rotate(${fdRoll}deg)`;
+    }
+
+    // ILS Glideslope & Localizer Diamonds
+    const ilsScale = document.getElementById('garmin-ils-scale');
+    const ilsGsDiamond = document.getElementById('ils-gs-diamond');
+    const ilsLocDiamond = document.getElementById('ils-loc-diamond');
+    if (ilsScale) {
+      const isIlsActive = (window.ILSAutopilot && window.ILSAutopilot.isActive) || document.getElementById('btn-sim-ils-toggle')?.classList.contains('active');
+      ilsScale.style.display = isIlsActive ? 'block' : 'none';
+      if (isIlsActive && ilsGsDiamond && ilsLocDiamond) {
+        const gsDev = THREE.MathUtils.clamp((flight.altAGL - 150) * 0.15, -45, 45);
+        const locDev = THREE.MathUtils.clamp(flight.pos.x * 0.25, -45, 45);
+        ilsGsDiamond.style.transform = `translateY(${gsDev}px)`;
+        ilsLocDiamond.style.transform = `translateX(${locDev}px)`;
+      }
     }
 
     // 8. Update Touch Throttle handle UI
@@ -3806,22 +3889,30 @@
   function updateAirgatesAndMissions(dt) {
     if (!planeGroup) return;
 
-    // Mission 1: Airgates Slalom detection
+    // Mission 1: Airgates Slalom detection (Emerald Rings +100 PTS & Gold Flash)
     if (airgatesList && airgatesList.length > 0) {
       airgatesList.forEach((gate) => {
         if (!gate.collected) {
           gate.group.getWorldPosition(_gateWorldPos);
           const d = _gateWorldPos.distanceTo(planeGroup.position);
-          if (d < 26.0) {
+          if (d < 24.0) {
             gate.collected = true;
             gate.material.color.setHex(0xffd700);
-            gate.material.emissive.setHex(0xffaa00);
+            gate.material.emissive.setHex(0xffd700);
             gate.discMaterial.color.setHex(0xffd700);
-            gate.discMaterial.opacity = 0.45;
+            gate.discMaterial.opacity = 0.65;
             playAirgateChime();
             missionTotalScore += 100;
             MISSIONS[0].currentProgress = Math.min(100, MISSIONS[0].currentProgress + 20);
             showToast(`🎯 КОЛЬЦО ${gate.index}/5 ПРОЙДЕНО! +100 PTS`);
+
+            // Golden flash pulsation on torus and target disc
+            if (gate.disc) {
+              gate.disc.scale.set(1.35, 1.35, 1.35);
+              setTimeout(() => {
+                if (gate.disc) gate.disc.scale.set(1.0, 1.0, 1.0);
+              }, 400);
+            }
 
             if (MISSIONS[0].currentProgress >= 100 && !MISSIONS[0].completed) {
               MISSIONS[0].completed = true;
@@ -3929,15 +4020,16 @@
       planeGroup.position.set(0, 1.25, 0);
       planeGroup.quaternion.setFromEuler(flight.rot);
     }
+    if (camera) {
+      SIM.cameraMode = 'chase';
+      const isHeavy = (SIM.planeModel === 'a380' || SIM.planeModel === 'b777');
+      camera.position.set(0, 1.25 + (isHeavy ? 10.5 : 5.2), -(isHeavy ? 38.0 : 18.0));
+      camera.lookAt(0, isHeavy ? 2.5 : 1.2, isHeavy ? 45.0 : 25.0);
+    }
     if (worldGroup) {
       worldGroup.position.set(0, -700, 0);
     } else if (terrainGroup) {
       terrainGroup.position.set(0, -700, 0);
-    }
-    if (camera) {
-      SIM.cameraMode = 'chase';
-      camera.position.set(0, 4.8, -13.5);
-      camera.lookAt(0, 0.6, 6.0);
     }
 
     const thrSlider = document.getElementById('sim-slider-throttle');
@@ -3981,6 +4073,12 @@
       planeGroup.position.set(0, 1.25, 0);
       planeGroup.quaternion.setFromEuler(flight.rot);
     }
+    if (camera) {
+      SIM.cameraMode = 'chase';
+      const isHeavy = (SIM.planeModel === 'a380' || SIM.planeModel === 'b777');
+      camera.position.set(0, 1.25 + (isHeavy ? 10.5 : 5.2), -(isHeavy ? 38.0 : 18.0));
+      camera.lookAt(0, isHeavy ? 2.5 : 1.2, isHeavy ? 45.0 : 25.0);
+    }
     if (worldGroup) {
       worldGroup.position.set(0, -targetAlt, 0);
     } else if (terrainGroup) {
@@ -4019,6 +4117,12 @@
     if (planeGroup) {
       planeGroup.position.set(0, 1.25, 0);
       planeGroup.quaternion.setFromEuler(flight.rot);
+    }
+    if (camera) {
+      SIM.cameraMode = 'chase';
+      const isHeavy = (SIM.planeModel === 'a380' || SIM.planeModel === 'b777');
+      camera.position.set(0, 1.25 + (isHeavy ? 10.5 : 5.2), -(isHeavy ? 38.0 : 18.0));
+      camera.lookAt(0, isHeavy ? 2.5 : 1.2, isHeavy ? 45.0 : 25.0);
     }
     if (worldGroup) {
       worldGroup.position.set(0, 0, 0);
@@ -5571,32 +5675,32 @@
     } else {
       updatePhysics(dt);
 
-      // Continuous Procedural Flight Motion of Terrain (Strict Forward Flight Alignment)
-      const hdgDeg = ((-flight.rot.y * 180 / Math.PI) % 360 + 360) % 360;
-      const hdgRad = THREE.MathUtils.degToRad(hdgDeg);
-      const forwardSpeed = Math.max(flight.ias, 40) / 3.6; // всегда > 0, никогда не летит назад!
+      // Continuous Procedural Flight Motion of Terrain (Strict Forward Flight Alignment along Aircraft Nose)
+      const hdgRad = flight.rot.y;
+      const forwardSpeed = Math.max(flight.ias, 40) / 3.6; // m/s
+      const stepDist = forwardSpeed * dt * 2.5;
 
-      // Двигаем мир строго НАВСТРЕЧУ носу самолёта:
-      const stepX = Math.sin(hdgRad) * forwardSpeed * dt;
-      const stepZ = Math.cos(hdgRad) * forwardSpeed * dt;
+      // Move world strictly opposite to the airplane nose vector (NO crab slide!)
+      const stepX = Math.sin(hdgRad) * stepDist;
+      const stepZ = Math.cos(hdgRad) * stepDist;
 
       if (worldGroup) {
-        worldGroup.position.x -= stepX * 3.5;
-        worldGroup.position.z -= stepZ * 3.5;
+        worldGroup.position.x -= stepX;
+        worldGroup.position.z -= stepZ;
         worldGroup.position.y = -flight.altAGL;
 
-        const tileStep = 2000;
+        const tileStep = 3000;
         if (Math.abs(worldGroup.position.x) > tileStep) worldGroup.position.x %= tileStep;
         if (Math.abs(worldGroup.position.z) > tileStep) worldGroup.position.z %= tileStep;
       } else if (terrainGroup) {
-        terrainGroup.position.x -= stepX * 3.5;
-        terrainGroup.position.z -= stepZ * 3.5;
+        terrainGroup.position.x -= stepX;
+        terrainGroup.position.z -= stepZ;
         terrainGroup.position.y = -flight.altAGL;
       }
 
       if (groundCanvasTexture) {
-        groundCanvasTexture.offset.x -= (stepX * 0.005);
-        groundCanvasTexture.offset.y -= (stepZ * 0.005);
+        groundCanvasTexture.offset.x -= (stepX * 0.003);
+        groundCanvasTexture.offset.y -= (stepZ * 0.003);
       }
 
       if (window.FlightRecorder) {
