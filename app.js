@@ -89,7 +89,7 @@
       btn_drain_cg: 'Слить бак 10 кг (Тест CG)',
       btn_dl_poster: 'Скачать Весь Инженерный Паспорт (А1 HD)',
       nav_hangar: '3D Ангар',
-      nav_sim: '🎮 ПОЛЁТ (MSFS Sim)',
+      nav_sim: '🎮 GAME (3D Sim)',
       nav_earth: '🌍 ЗЕМЛЯ (Google 3D)',
       nav_math: 'Инженерная Математика',
       nav_mission: 'Миссии и Пульт RC',
@@ -198,7 +198,7 @@
       btn_drain_cg: 'Drain 10 kg Tank (CG Test)',
       btn_dl_poster: 'Download Master Technical Poster (A1 HD)',
       nav_hangar: '3D Hangar',
-      nav_sim: '🎮 FLIGHT (MSFS Sim)',
+      nav_sim: '🎮 GAME (3D Sim)',
       nav_earth: '🌍 EARTH (Google 3D)',
       nav_math: 'Engineering Math',
       nav_mission: 'Missions & RC GCS',
@@ -1768,6 +1768,227 @@
   }
 
   // --------------------------------------------------------------------------
+  // 6B. PROCEDURAL 3D GEOMETRY OF AERODRONE X1 VTOL (HIGH-SPEED TILT-ROTOR)
+  // Sole Creator & Chief Aerospace Architect: Musayev Sardor
+  // ----------------------------------------------------------------------------
+  let currentHangarCraft = 'aeroterra';
+  let dronePropellerGroups = [];
+
+  function buildAeroDroneHangarModel() {
+    dronePropellerGroups = [];
+    explodedGroups = {};
+
+    const carbonBodyMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0a0f1d,
+      roughness: 0.16,
+      metalness: 0.88,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.06,
+      envMapIntensity: 2.2
+    });
+
+    const goldAccentMat = new THREE.MeshPhysicalMaterial({
+      color: 0xffd700,
+      roughness: 0.2,
+      metalness: 0.85,
+      clearcoat: 1.0,
+      emissive: 0x443300,
+      emissiveIntensity: 0.45
+    });
+
+    const cyanGlowMat = new THREE.MeshPhysicalMaterial({
+      color: 0x00e5ff,
+      emissive: 0x00e5ff,
+      emissiveIntensity: 0.85,
+      roughness: 0.12,
+      metalness: 0.5
+    });
+
+    const propBladeMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.25,
+      metalness: 0.7
+    });
+
+    const droneRoot = new THREE.Group();
+    droneRoot.name = 'AeroDroneX1_Root';
+
+    // 1. Central Aerodynamic Carbon Pod
+    const bodyGeo = new THREE.CylinderGeometry(0.52, 0.38, 3.4, 24);
+    bodyGeo.rotateX(Math.PI / 2);
+    bodyGeo.scale(1.15, 0.75, 1.0);
+    const bodyMesh = new THREE.Mesh(bodyGeo, carbonBodyMat);
+    bodyMesh.position.set(0, 0.45, 0);
+    bodyMesh.castShadow = true;
+    droneRoot.add(bodyMesh);
+
+    // Nose Cap
+    const noseGeo = new THREE.SphereGeometry(0.48, 20, 16);
+    noseGeo.scale(1.1, 0.75, 1.4);
+    const noseMesh = new THREE.Mesh(noseGeo, carbonBodyMat);
+    noseMesh.position.set(0, 0.45, 1.7);
+    noseMesh.castShadow = true;
+    droneRoot.add(noseMesh);
+
+    // Gold Spine
+    const spineGeo = new THREE.BoxGeometry(0.24, 0.12, 2.8);
+    const spineMesh = new THREE.Mesh(spineGeo, goldAccentMat);
+    spineMesh.position.set(0, 0.78, 0.1);
+    droneRoot.add(spineMesh);
+
+    // Front 360° LiDAR & FLIR Turret
+    const lidarGeo = new THREE.SphereGeometry(0.24, 16, 16);
+    const lidarMesh = new THREE.Mesh(lidarGeo, carbonBodyMat);
+    lidarMesh.position.set(0, 0.2, 1.95);
+    droneRoot.add(lidarMesh);
+
+    const lensGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.08, 16);
+    lensGeo.rotateX(Math.PI / 2);
+    const lensMesh = new THREE.Mesh(lensGeo, cyanGlowMat);
+    lensMesh.position.set(0, 0.2, 2.16);
+    droneRoot.add(lensMesh);
+
+    // 2. 4 X-Cross Carbon Booms with 4 Tilt-Rotor Ducted Fans (8 Rotors Total)
+    const armConfigs = [
+      { x: -1.75, z: 1.25, rotY: 0.35 },
+      { x: 1.75, z: 1.25, rotY: -0.35 },
+      { x: -1.85, z: -1.35, rotY: -0.35 },
+      { x: 1.85, z: -1.35, rotY: 0.35 }
+    ];
+
+    armConfigs.forEach((b) => {
+      const armLength = Math.hypot(b.x, b.z);
+      const armGeo = new THREE.CylinderGeometry(0.08, 0.1, armLength, 12);
+      armGeo.rotateZ(Math.atan2(b.x, armLength));
+      armGeo.rotateY(b.rotY);
+      const armMesh = new THREE.Mesh(armGeo, carbonBodyMat);
+      armMesh.position.set(b.x * 0.5, 0.48, b.z * 0.5);
+      droneRoot.add(armMesh);
+
+      // Ducted Fan Cowling Ring
+      const nacGroup = new THREE.Group();
+      nacGroup.position.set(b.x, 0.48, b.z);
+
+      const ringGeo = new THREE.TorusGeometry(0.7, 0.07, 16, 32);
+      const ringMesh = new THREE.Mesh(ringGeo, carbonBodyMat);
+      ringMesh.rotation.x = Math.PI / 2;
+      nacGroup.add(ringMesh);
+
+      const neonRingGeo = new THREE.TorusGeometry(0.71, 0.025, 12, 32);
+      const neonRing = new THREE.Mesh(neonRingGeo, cyanGlowMat);
+      neonRing.rotation.x = Math.PI / 2;
+      nacGroup.add(neonRing);
+
+      // Hub & Propellers
+      const hubGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.45, 16);
+      const hubMesh = new THREE.Mesh(hubGeo, goldAccentMat);
+      nacGroup.add(hubMesh);
+
+      for (const pOffset of [-0.14, 0.14]) {
+        const propGroup = new THREE.Group();
+        propGroup.position.y = pOffset;
+
+        for (let blade = 0; blade < 3; blade++) {
+          const bGeo = new THREE.BoxGeometry(0.05, 0.015, 0.65);
+          const bMesh = new THREE.Mesh(bGeo, propBladeMat);
+          bMesh.position.z = 0.32;
+          bMesh.rotation.y = (blade * Math.PI * 2) / 3;
+          propGroup.add(bMesh);
+        }
+        nacGroup.add(propGroup);
+        dronePropellerGroups.push(propGroup);
+      }
+
+      droneRoot.add(nacGroup);
+    });
+
+    // 3. Ventral Modular Pod: Fire Impulse Cannon / ULV Agro-Spray / 50kg Delivery Pod
+    const podGeo = new THREE.BoxGeometry(0.72, 0.4, 1.6);
+    const podMesh = new THREE.Mesh(podGeo, goldAccentMat);
+    podMesh.position.set(0, 0.1, 0);
+    droneRoot.add(podMesh);
+
+    // Fire Cannon Nozzle
+    const cannonGeo = new THREE.CylinderGeometry(0.07, 0.09, 0.55, 16);
+    cannonGeo.rotateX(Math.PI / 2);
+    const cannonMesh = new THREE.Mesh(cannonGeo, carbonBodyMat);
+    cannonMesh.position.set(0, 0.1, 1.05);
+    droneRoot.add(cannonMesh);
+
+    // Winch Pod
+    const winchGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.18, 16);
+    const winchMesh = new THREE.Mesh(winchGeo, carbonBodyMat);
+    winchMesh.position.set(0, -0.16, 0);
+    droneRoot.add(winchMesh);
+
+    // 4. Landing Skids
+    [-0.75, 0.75].forEach(sX => {
+      const skidGeo = new THREE.CylinderGeometry(0.045, 0.045, 2.7, 12);
+      skidGeo.rotateX(Math.PI / 2);
+      const skidMesh = new THREE.Mesh(skidGeo, carbonBodyMat);
+      skidMesh.position.set(sX, -0.32, 0);
+      droneRoot.add(skidMesh);
+
+      [-0.85, 0.85].forEach(sZ => {
+        const strutGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.6, 8);
+        strutGeo.rotateZ(sX > 0 ? -0.22 : 0.22);
+        const strutMesh = new THREE.Mesh(strutGeo, carbonBodyMat);
+        strutMesh.position.set(sX * 0.78, -0.05, sZ);
+        droneRoot.add(strutMesh);
+      });
+    });
+
+    aircraftGroup.add(droneRoot);
+  }
+
+  function switchHangarCraft(craftKey) {
+    if (!aircraftGroup) return;
+    currentHangarCraft = craftKey;
+
+    // Clear previous craft meshes & hotspots
+    while (aircraftGroup.children.length > 0) {
+      const child = aircraftGroup.children[0];
+      aircraftGroup.remove(child);
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+        else child.material.dispose();
+      }
+    }
+    hotspotSprites = [];
+
+    const titleEl = document.getElementById('hud-val-designation');
+    const mtowEl = document.getElementById('hud-val-mtow');
+    const spanEl = document.getElementById('hud-val-wingspan');
+
+    if (craftKey === 'aerodrone') {
+      buildAeroDroneHangarModel();
+      createHotspotMarkers();
+      if (titleEl) titleEl.textContent = 'AeroDrone X1 VTOL (High-Speed Tilt-Rotor)';
+      if (mtowEl) mtowEl.textContent = '280 кг';
+      if (spanEl) spanEl.textContent = '3.8 м (VTOL)';
+      showAlert('🚁 ВЫБРАН СКОРОСТНОЙ МИНИ-ДРОН AERODRONE X1 VTOL!', 'success');
+    } else if (craftKey === 'custom' && customLoadedMesh) {
+      aircraftGroup.add(customLoadedMesh.clone());
+      if (titleEl) titleEl.textContent = 'Пользовательская 3D-Модель';
+      showAlert('📂 ЗАГРУЖЕНА ВАША 3D-МОДЕЛЬ!', 'info');
+    } else {
+      buildAeroTerraModel();
+      createHotspotMarkers();
+      if (titleEl) titleEl.textContent = 'AeroTerra H2 (STOL Twin-Boom)';
+      if (mtowEl) mtowEl.textContent = '1638 кг';
+      if (spanEl) spanEl.textContent = '12.4 м';
+      showAlert('✈️ ВЫБРАН ТЯЖЁЛЫЙ САМОЛЁТ AEROTERRA H2 (800 Л)!', 'success');
+    }
+
+    // Sync button active states
+    document.querySelectorAll('.craft-switch-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.craft === craftKey);
+    });
+  }
+  window.switchHangarCraft = switchHangarCraft;
+
+  // --------------------------------------------------------------------------
   // 7. 8 INTERACTIVE 3D HOTSPOTS & RAYCASTING
   // --------------------------------------------------------------------------
   function createHotspotMarkers() {
@@ -3031,12 +3252,69 @@
   }
 
   // --------------------------------------------------------------------------
-  // 14. AI CHIEF DESIGNER (AEROSPACE ADVISOR CHATBOT)
+  // 14. AI CHIEF DESIGNER & FLEET BUYER (AEROSPACE ADVISOR CHATBOT)
   // --------------------------------------------------------------------------
+  let aiCurrentMode = 'engineer'; // 'engineer' or 'buyer'
+
   function setupAiAdvisor() {
     const input = document.getElementById('ai-chat-input');
     const sendBtn = document.getElementById('btn-ai-chat-send');
     const auditBtn = document.getElementById('btn-ai-analyze-state');
+
+    const modeEngBtn = document.getElementById('btn-ai-mode-engineer');
+    const modeBuyBtn = document.getElementById('btn-ai-mode-buyer');
+    const nameEl = document.querySelector('[data-i18n="ai_name"]');
+    const promptsWrap = document.querySelector('.ai-quick-prompts');
+
+    function updateAiModeUI() {
+      if (aiCurrentMode === 'engineer') {
+        modeEngBtn?.classList.add('active');
+        modeBuyBtn?.classList.remove('active');
+        if (nameEl) nameEl.textContent = STATE.lang === 'ru' ? 'ИИ-Главный Конструктор v3.0' : 'AI Chief Aerospace Designer v3.0';
+        if (promptsWrap) {
+          promptsWrap.innerHTML = `
+            <span class="ai-prompt-chip" data-query="audit">⚡ Полный аудит текущей конфигурации</span>
+            <span class="ai-prompt-chip" data-query="stol">🛫 Как распределенная тяга DEP сокращает взлет?</span>
+            <span class="ai-prompt-chip" data-query="h2">💧 Преимущество LH2 перед литий-ионными АКБ</span>
+            <span class="ai-prompt-chip" data-query="catia">📐 Что такое Class-A Surface в CATIA V5?</span>
+          `;
+          promptsWrap.querySelectorAll('.ai-prompt-chip').forEach(c => {
+            c.addEventListener('click', function () {
+              sendAiMessage(this.textContent.replace(/^[^\w\sа-яА-Я]+/, '').trim());
+            });
+          });
+        }
+      } else {
+        modeEngBtn?.classList.remove('active');
+        modeBuyBtn?.classList.add('active');
+        if (nameEl) nameEl.textContent = STATE.lang === 'ru' ? 'ИИ-Консультант Закупки Флота (Fleet Buyer)' : 'AI Fleet Acquisition & Economic Advisor';
+        if (promptsWrap) {
+          promptsWrap.innerHTML = `
+            <span class="ai-prompt-chip" data-query="fleet_calc">💰 Рассчитать стоимость флота из 2 AeroTerra + 4 AeroDrone</span>
+            <span class="ai-prompt-chip" data-query="agro_roi">🌾 Окупаемость обработки 20,000 Га садов</span>
+            <span class="ai-prompt-chip" data-query="compare_mi8">🌲 Сравнение расходов на тушение пожаров с Ми-8</span>
+            <span class="ai-prompt-chip" data-query="offer_order">📄 Получить КП с подписью Musayev Sardor</span>
+          `;
+          promptsWrap.querySelectorAll('.ai-prompt-chip').forEach(c => {
+            c.addEventListener('click', function () {
+              sendAiMessage(this.textContent.replace(/^[^\w\sа-яА-Я]+/, '').trim());
+            });
+          });
+        }
+      }
+    }
+
+    modeEngBtn?.addEventListener('click', () => {
+      aiCurrentMode = 'engineer';
+      updateAiModeUI();
+      addMessageToAiBox('system', '<strong>Режим: Главный Авиаконструктор v3.0 активирован.</strong> Готов анализировать аэродинамику, распределение тяги DEP, прочность углепластикового лонжерона и баллистику сброса воды.');
+    });
+
+    modeBuyBtn?.addEventListener('click', () => {
+      aiCurrentMode = 'buyer';
+      updateAiModeUI();
+      addMessageToAiBox('system', '<strong>Режим: ИИ-Консультант по Закупке Флота активирован.</strong> Я помогу рассчитать количество бортов AeroTerra H2 и AeroDrone X1 VTOL для вашего региона, чистую экономию на водороде vs керосин и сформировать КП с официальной подписью создателя проекта <b>Musayev Sardor</b>.');
+    });
 
     async function sendAiMessage(userText) {
       if (!userText.trim()) return;
@@ -3065,7 +3343,7 @@
         const res = await fetch('/api/ai-gateway', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: userText, context: 'aerospace_chief_designer' }),
+          body: JSON.stringify({ prompt: userText, context: aiCurrentMode === 'buyer' ? 'fleet_acquisition_advisor' : 'aerospace_chief_designer' }),
           signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -3124,6 +3402,23 @@
     const q = query.toLowerCase();
     const p = STATE.params;
     const isRu = STATE.lang === 'ru';
+
+    // Economic & Fleet Buyer Mode Queries
+    if (aiCurrentMode === 'buyer' || q.includes('флот') || q.includes('покупк') || q.includes('стоимост') || q.includes('roi') || q.includes('окупаем') || q.includes('ми-8') || q.includes('кп') || q.includes('цен') || q.includes('заказ')) {
+      return isRu
+        ? `<strong>[ЭКОНОМИЧЕСКИЙ РАСЧЁТ И КОММЕРЧЕСКИЙ АНАЛИЗ ФЛОТА]</strong><br>
+           • <strong>Стоимость лётного часа:</strong> AeroTerra H2 — <strong>$48/час</strong>, AeroDrone X1 VTOL — <strong>$18/час</strong> (для сравнения: вертолёт Ми-8 — $1,850/час, Robinson R44 — $420/час).<br>
+           • <strong>Рекомендуемая связка:</strong> 2 тяжёлых борта AeroTerra H2 (пожарный бак 800 л / агро 600 л) + 4 скоростных дрона AeroDrone X1 (120 л пушка / 80 л ULV / 50 кг доставка).<br>
+           • <strong>Годовая экономия на топливе:</strong> более <strong>$190,000 в год</strong> при обработке 20,000–30,000 Га.<br>
+           • <strong>Срок окупаемости (ROI):</strong> <strong>7.2–8.4 месяца</strong>.<br>
+           • <em>Официальное оформление:</em> Контрактное производство и поставка утверждены создателем проекта: <strong>👑 Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО</strong>. Нажмите кнопку <em>«💼 ИИ-Консультант Покупки (Fleet Buyer)»</em> в симуляторе для выгрузки официального PDF-оффера!`
+        : `<strong>[FLEET ACQUISITION & ECONOMIC ROI REPORT]</strong><br>
+           • <strong>Flight Hour Cost:</strong> AeroTerra H2 — <strong>$48/hr</strong>, AeroDrone X1 VTOL — <strong>$18/hr</strong> (vs Mi-8 helicopter at $1,850/hr and R44 at $420/hr).<br>
+           • <strong>Optimal Fleet Pairing:</strong> 2x Heavy AeroTerra H2 (800L Fire / 600L Agro) + 4x AeroDrone X1 VTOL (120L Cannon / 80L ULV / 50kg Delivery).<br>
+           • <strong>Annual Fuel Savings:</strong> Over <strong>$190,000/year</strong> across 25,000 ha.<br>
+           • <strong>ROI Payback:</strong> <strong>7.2 - 8.4 months</strong>.<br>
+           • <em>Author Validation:</em> Fully certified by Founder & Chief Aerospace Architect: <strong>👑 Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО</strong>. Direct inquiries: sarikmusaev2006@gmail.com.`;
+    }
 
     if (q.includes('аудит') || q.includes('audit') || q.includes('конфигурац')) {
       const wingArea = 13.35;
@@ -3306,6 +3601,13 @@
     document.getElementById('btn-mode-clean').addEventListener('click', () => setMissionMode('clean'));
     document.getElementById('btn-mode-agro').addEventListener('click', () => setMissionMode('agro'));
     document.getElementById('btn-mode-fire').addEventListener('click', () => setMissionMode('fire'));
+
+    // Hangar Craft Switcher (AeroTerra H2 vs AeroDrone X1 VTOL vs Custom Model)
+    document.getElementById('btn-hangar-craft-aeroterra')?.addEventListener('click', () => switchHangarCraft('aeroterra'));
+    document.getElementById('btn-hangar-craft-aerodrone')?.addEventListener('click', () => switchHangarCraft('aerodrone'));
+    document.getElementById('btn-hangar-craft-custom')?.addEventListener('click', () => {
+      document.getElementById('custom-model-file-input')?.click();
+    });
 
     // Engineering 3D Buttons & 4-Shader Switcher
     const btnExploded = document.getElementById('btn-exploded-view');

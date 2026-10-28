@@ -209,6 +209,7 @@
           side: THREE.DoubleSide
         });
         const blurMesh = new THREE.Mesh(blurGeo, blurMat);
+        blurMesh.visible = false;
         blurMesh.position.set(localX, localY - 0.08, 1.28);
         parent.add(blurMesh);
         propBlurMeshes.push(blurMesh);

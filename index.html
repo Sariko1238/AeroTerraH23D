@@ -48,7 +48,7 @@
       <ul class="nav-links">
         <li class="nav-item"><a href="#blueprint-section" class="active"><i class="fa-solid fa-compass-drafting"></i> <span data-i18n="nav_blueprint">Инженерный Паспорт</span></a></li>
         <li class="nav-item"><a href="#hangar-section"><i class="fa-solid fa-cube"></i> <span data-i18n="nav_hangar">3D Ангар</span></a></li>
-        <li class="nav-item"><a href="#simulator-section" class="nav-sim-link" id="nav-simulator-tab"><span class="pulse-indicator-neon"></span><i class="fa-solid fa-gamepad"></i> <span data-i18n="nav_sim">🎮 ПОЛЁТ (MSFS Sim)</span></a></li>
+        <li class="nav-item"><a href="#simulator-section" class="nav-sim-link" id="nav-simulator-tab"><span class="pulse-indicator-neon"></span><i class="fa-solid fa-gamepad"></i> <span data-i18n="nav_sim">🎮 GAME (3D Sim)</span></a></li>
         <li class="nav-item"><a href="#math-section"><i class="fa-solid fa-calculator"></i> <span data-i18n="nav_math">Инженерная Математика</span></a></li>
         <li class="nav-item"><a href="#mission-section"><i class="fa-solid fa-map-location-dot"></i> <span data-i18n="nav_mission">Миссии и Пульт RC</span></a></li>
         <li class="nav-item"><a href="#club-section"><i class="fa-solid fa-users-gear"></i> <span data-i18n="nav_club">Клуб & ИИ Конструктор</span></a></li>
@@ -149,6 +149,20 @@
             <span class="telemetry-label" data-i18n="hud_propulsion">ТЯГА:</span>
             <span class="telemetry-val cyan">4x Brushless DEP</span>
           </div>
+        </div>
+
+        <!-- Major Craft Switcher: AeroTerra H2 vs AeroDrone X1 VTOL vs Custom Model -->
+        <div class="hangar-craft-switcher" id="hangar-craft-switcher">
+          <button class="craft-switch-btn active" id="btn-hangar-craft-aeroterra" data-craft="aeroterra" title="Тяжёлый самолёт STOL 800л">
+            <i class="fa-solid fa-plane"></i> <span>✈️ 1. Самолёт AeroTerra H2 (800 л)</span>
+          </button>
+          <button class="craft-switch-btn" id="btn-hangar-craft-aerodrone" data-craft="aerodrone" title="Скоростной мини-дрон VTOL">
+            <i class="fa-solid fa-helicopter"></i> <span>🚁 2. Мини-Дрон AeroDrone X1 VTOL (Быстрый / Вертикальный взлёт)</span>
+          </button>
+          <button class="craft-switch-btn" id="btn-hangar-craft-custom" data-craft="custom" title="Загрузить свою 3D-модель">
+            <i class="fa-solid fa-folder-open"></i> <span>📂 3. Моя 3D-Модель (.GLB/.STL/.OBJ)</span>
+          </button>
+          <input type="file" id="custom-model-file-input" accept=".glb,.gltf,.obj,.stl" style="display: none;">
         </div>
 
         <!-- Mission Mode Switcher -->
@@ -316,15 +330,27 @@
 
       <!-- Controls & Dropdowns Group -->
       <div class="sim-top-selects-group">
-        <!-- 1. Aircraft Selection (Prominent Dropdown in Top Bar) -->
-        <div class="sim-select-wrap sim-select-aircraft-wrap" title="Выбор модели самолёта">
+        <!-- 1. Aircraft & Drone Selection -->
+        <div class="sim-select-wrap sim-select-aircraft-wrap" title="Выбор воздушного судна">
           <i class="fa-solid fa-plane"></i>
           <select class="sim-select" id="aircraft-selector">
-            <option value="aeroterra" selected>✈️ AeroTerra H2 (Мой Самолёт — STOL H2-Hybrid)</option>
+            <option value="aeroterra" selected>✈️ Самолёт AeroTerra H2 (800 л STOL)</option>
+            <option value="aerodrone">🚁 Мини-Дрон AeroDrone X1 VTOL (Быстрый / Вертикальный взлёт)</option>
             <option value="a380">🛫 Airbus A380-800 Superjumbo</option>
             <option value="b777">🛩️ Boeing 777-300ER</option>
-            <option value="agro">🌿 AeroTerra Agro-Sprayer (Штанги ULV)</option>
-            <option value="fire">💧 AeroTerra Fire-Bomber (Водяной бак 800 л)</option>
+            <option value="custom">📂 Своя 3D-Модель (.GLB/.STL/.OBJ)</option>
+          </select>
+        </div>
+
+        <!-- 1B. 5 Interactive 3D Flight Routes Selector -->
+        <div class="sim-select-wrap sim-select-route-wrap" title="Интерактивные 3D-Маршруты Полёта">
+          <i class="fa-solid fa-route" style="color: #00ff9d;"></i>
+          <select class="sim-select" id="sim-select-route">
+            <option value="route1" selected>🏙️ Маршрут 1: Центр Ташкента ➔ Башни ➔ Телебашня</option>
+            <option value="route2">🌾 Маршрут 2: Агро-рейд ➔ 6 секторов садов по NDVI</option>
+            <option value="route3">🔥 Маршрут 3: Экстренный вылет МЧС ➔ Чарвак ➔ Чимган</option>
+            <option value="route4">🚁 Маршрут 4 (VTOL): Взлёт ➔ Доставка на крышу Башни №1 [H]</option>
+            <option value="route5">🛬 Маршрут 5: Коробочка и посадка по ILS на ВПП 08L (UTTT)</option>
           </select>
         </div>
 
@@ -363,6 +389,24 @@
 
       <!-- Quick Action Buttons -->
       <div class="sim-top-actions-group">
+        <!-- Fleet & Custom Model Buttons -->
+        <button class="sim-top-btn upload-model-btn" id="btn-upload-custom-model" title="Загрузить свой 3D-файл (.GLB / .GLTF / .OBJ / .STL)">
+          <i class="fa-solid fa-folder-open"></i> <span>📂 Своя 3D-Модель</span>
+        </button>
+        <input type="file" id="input-custom-model" accept=".glb,.gltf,.obj,.stl" style="display: none;">
+
+        <button class="sim-top-btn info-btn" id="btn-aircraft-info-modal" title="Досье и ТТХ текущего воздушного судна">
+          <i class="fa-solid fa-circle-info"></i> <span>ℹ️ Досье борта</span>
+        </button>
+
+        <button class="sim-top-btn customizer-btn" id="btn-open-customizer" title="Визуальный кастомайзер самолёта / дрона">
+          <i class="fa-solid fa-palette"></i> <span>🛠️ Кастомайзер</span>
+        </button>
+
+        <button class="sim-top-btn ai-advisor-btn" id="btn-open-ai-fleet-advisor" title="ИИ-Консультант по подбору флота и покупке">
+          <i class="fa-solid fa-robot"></i> <span>🤖 ИИ-Консультант &amp; Конструктор</span>
+        </button>
+
         <!-- Fast Scenario Teleport Buttons -->
         <button class="sim-top-btn teleport-btn towers-btn" id="btn-teleport-towers" title="Телепорт прямо к створу Двух Башен Ташкент-Сити (Высота 450 м, скорость 190 км/ч)">
           <i class="fa-solid fa-city"></i> <span>🏙️ К Двум Башням (Ташкент-Сити)</span>
@@ -813,6 +857,10 @@
         </div>
 
         <div class="sim-radar-metrics">
+          <div class="sim-radar-live-bar">
+            <span class="live-pill-pulse"><span class="pulse-dot"></span> LIVE 1s SYNC</span>
+            <span class="live-time-str" id="sim-radar-live-clock">Ташкент LIVE (UTC+5)</span>
+          </div>
           <div class="radar-metric-row">
             <span>КУРС (HDG): <b id="sim-radar-hdg">090°</b></span>
             <span>СКОРОСТЬ: <b id="sim-radar-spd">180 км/ч</b></span>
@@ -1029,6 +1077,278 @@
             <h4>💡 ОСОБЕННОСТИ AEROTERRA H2 STOL</h4>
             <p>• <b>Эффект обдува крыла (DEP Blown-Wing):</b> 4 электродвигателя направляют спутную струю прямо на верхнюю поверхность крыла. При полной тяге самолёт сохраняет управляемость и подъёмную силу даже на сверхмалых скоростях (35–45 км/ч)!</p>
             <p>• <b>Водородно-электрический гибрид:</b> Основное питание обеспечивается топливной ячейкой PEMFC на водороде, а пиковые STOL режимы и сброс воды поддерживаются буферной LiPo батареей (кнопка <b>⚡ БУСТ H2-LI-PO</b>).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. Live Aircraft Dossier Modal (ℹ️ Досье борта & Сравнение TTX) -->
+    <div class="sim-modal-overlay" id="aircraft-info-modal" style="display: none;">
+      <div class="sim-modal-card ac-info-modal-card">
+        <div class="sim-modal-header">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div class="ac-info-icon-badge"><i class="fa-solid fa-file-contract"></i></div>
+            <div>
+              <h3 id="ac-info-title">✈️ AeroTerra H2 Heavy STOL</h3>
+              <span class="ac-info-badge stol" id="ac-info-badge">✈️ КОРОТКИЙ ВЗЛЁТ (STOL)</span>
+            </div>
+          </div>
+          <button class="btn-close-modal" id="btn-close-aircraft-info"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="sim-modal-body">
+          <div class="ac-info-section">
+            <h4 class="ac-info-section-title"><i class="fa-solid fa-gauge-high"></i> ТАКТИКО-ТЕХНИЧЕСКИЕ ХАРАКТЕРИСТИКИ (ТТХ)</h4>
+            <div class="table-responsive">
+              <table class="ac-info-table">
+                <tbody id="ac-info-ttx-tbody">
+                  <tr><td>Взлётная масса (MTOW)</td><td><b>820 кг</b></td><td>Тип взлёта</td><td><b>STOL (85 м)</b></td></tr>
+                  <tr><td>Размах / Габариты</td><td><b>12.4 м</b></td><td>Макс. скорость</td><td><b>240 км/ч</b></td></tr>
+                  <tr><td>Запас топлива / H2</td><td><b>24 кг LH₂</b></td><td>Ёмкость бака / Модуль</td><td><b>800 л (Пожарный) / 600 л (Агро)</b></td></tr>
+                  <tr><td>Себестоимость часа</td><td><b>$48/час</b></td><td>Тяговооружённость</td><td><b>1.15 (Оптимальная)</b></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="ac-info-section">
+            <h4 class="ac-info-section-title"><i class="fa-solid fa-scale-balanced"></i> СРАВНЕНИЕ ТИПОВ ФЛОТА: САМОЛЁТ vs МИНИ-ДРОН</h4>
+            <div class="fleet-compare-grid">
+              <div class="fleet-compare-card">
+                <div class="fleet-compare-head">
+                  <span class="fleet-type-pill">ТИП 1 · ТЯЖЁЛЫЙ БОРТ</span>
+                  <h5>✈️ AeroTerra H2 STOL</h5>
+                </div>
+                <ul class="fleet-compare-list">
+                  <li><b>Основная миссия:</b> Тушение крупных лесных пожаров (800 л) и сплошная агрообработка полей (600 л).</li>
+                  <li><b>Взлёт/посадка:</b> Сверхкороткий разбег 85–120 м с грунта благодаря обдуву 4 моторов DEP.</li>
+                  <li><b>Дальность:</b> 1,400 км на криогенном водороде LH₂.</li>
+                  <li><b>Экономика:</b> $48/час (в 7 раз дешевле вертолётов Ми-8 / Bell 407).</li>
+                </ul>
+              </div>
+
+              <div class="fleet-compare-card highlight">
+                <div class="fleet-compare-head">
+                  <span class="fleet-type-pill vtol">ТИП 2 · СКОРОСТНОЙ МИНИ-ДРОН</span>
+                  <h5>🚁 AeroDrone X1 VTOL</h5>
+                </div>
+                <ul class="fleet-compare-list">
+                  <li><b>Основная миссия:</b> Мгновенная экспресс-доставка грузов (50 кг), точечное импульсное тушение очагов (120 л) и ULV-опрыскивание (80 л).</li>
+                  <li><b>Взлёт/посадка:</b> 100% Вертикальный взлёт и зависание (0 км/ч) с любой поляны, крыши или башни.</li>
+                  <li><b>Динамика:</b> Спринт до 340 км/ч за 3 сек, набор высоты +25 м/с.</li>
+                  <li><b>Экономика:</b> $18/час (в 15 раз дешевле легкомоторной авиации).</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Official Sole Creator Validation Seal -->
+          <div class="creator-validation-banner">
+            <div class="creator-seal-gold">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div class="creator-seal-info">
+              <div class="creator-seal-title">
+                <i class="fa-solid fa-crown" style="color: #ffd700;"></i>
+                <span>👑 Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО</span>
+              </div>
+              <p class="creator-seal-desc">
+                Официальный авторский проект главного авиационного инженера и архитектора симулятора <b>Musayev Sardor</b>. 
+                Все права защищены. Сертифицировано для задач МЧС, экологии и точного земледелия.
+              </p>
+              <div class="creator-seal-tags">
+                <span class="seal-tag"><i class="fa-solid fa-check"></i> CS-23 UAV Validated</span>
+                <span class="seal-tag"><i class="fa-solid fa-envelope"></i> sarikmusaev2006@gmail.com</span>
+                <span class="seal-tag"><i class="fa-solid fa-bolt"></i> Zero Carbon Emission</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Visual Aircraft Customizer Modal (🎨 Визуальный кастомизатор) -->
+    <div class="sim-modal-overlay" id="aircraft-customizer-modal" style="display: none;">
+      <div class="sim-modal-card customizer-modal-card">
+        <div class="sim-modal-header">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div class="ac-info-icon-badge" style="background: rgba(168, 85, 247, 0.2); border-color: #a855f7; color: #c084fc;"><i class="fa-solid fa-palette"></i></div>
+            <div>
+              <h3>🎨 ВИЗУАЛЬНЫЙ КАСТОМИЗАТОР И ЛИВРЕИ</h3>
+              <span style="font-family: var(--font-mono); font-size: 0.75rem; color: #a855f7;">LIVE PBR COMPOSITE SHADER & AIRFRAME TUNER</span>
+            </div>
+          </div>
+          <button class="btn-close-modal" id="btn-close-customizer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="sim-modal-body">
+          <div class="customizer-grid">
+            <div class="customizer-col">
+              <h4 class="customizer-subhead"><i class="fa-solid fa-brush"></i> ЛИВРЕЯ И МАТЕРИАЛ ОБШИВКИ</h4>
+              <div class="livery-chips-grid">
+                <div class="livery-chip active" data-livery="white" style="--chip-color: #f8fafc;">
+                  <span class="chip-swatch" style="background: #ffffff; border: 1px solid #ccc;"></span>
+                  <div class="chip-label"><b>⚪ Pearl White</b><span>Заводской глянец</span></div>
+                </div>
+                <div class="livery-chip" data-livery="carbon" style="--chip-color: #1a1e28;">
+                  <span class="chip-swatch" style="background: #11141c; border: 1px solid #444;"></span>
+                  <div class="chip-label"><b>⚫ Stealth Carbon</b><span>Матовый углепластик</span></div>
+                </div>
+                <div class="livery-chip" data-livery="gold" style="--chip-color: #eab308;">
+                  <span class="chip-swatch" style="background: linear-gradient(135deg, #f59e0b, #fbbf24);"></span>
+                  <div class="chip-label"><b>🟡 Gold Executive</b><span>Золотое напыление</span></div>
+                </div>
+                <div class="livery-chip" data-livery="cyan" style="--chip-color: #00e5ff;">
+                  <span class="chip-swatch" style="background: linear-gradient(135deg, #0284c7, #00e5ff);"></span>
+                  <div class="chip-label"><b>🔵 Cyber Cyan</b><span>Неоновый кибер-стиль</span></div>
+                </div>
+                <div class="livery-chip" data-livery="emerald" style="--chip-color: #10b981;">
+                  <span class="chip-swatch" style="background: linear-gradient(135deg, #059669, #34d399);"></span>
+                  <div class="chip-label"><b>🟢 Eco Emerald</b><span>Агро-экологический</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="customizer-col">
+              <h4 class="customizer-subhead"><i class="fa-solid fa-sliders"></i> ГЕОМЕТРИЯ КРЫЛА И ДВИГАТЕЛИ</h4>
+              <div class="cust-control-group">
+                <div class="cust-control-label">
+                  <span>Размах крыла (Wingspan):</span>
+                  <b id="cust-val-wingspan">12.4 м</b>
+                </div>
+                <input type="range" class="cust-slider" id="cust-slider-wingspan" min="8.0" max="16.0" step="0.2" value="12.4">
+                <div class="cust-slider-hints"><span>8.0 м (Акробатика)</span><span>12.4 м (База)</span><span>16.0 м (Макс. парение)</span></div>
+              </div>
+
+              <div class="cust-control-group">
+                <div class="cust-control-label">
+                  <span>Форсаж тяги моторов (Power Boost):</span>
+                  <b id="cust-val-power">100%</b>
+                </div>
+                <input type="range" class="cust-slider" id="cust-slider-power" min="80" max="160" step="5" value="100">
+                <div class="cust-slider-hints"><span>80% (Эко)</span><span>100% (Номинал)</span><span>160% (STOL Форсаж)</span></div>
+              </div>
+
+              <div class="cust-control-group">
+                <div class="cust-control-label">
+                  <span>Конфигурация шасси:</span>
+                </div>
+                <div class="gear-select-row">
+                  <button class="gear-select-btn active" data-gear="tundra">🛞 Тундра-Колёса</button>
+                  <button class="gear-select-btn" data-gear="floats">🌊 Поплавки</button>
+                  <button class="gear-select-btn" data-gear="skis">❄️ Лыжи</button>
+                  <button class="gear-select-btn" data-gear="skids">🚁 VTOL Полозья</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="customizer-footer-action">
+            <button class="btn-primary-action" id="btn-apply-customizer">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> <span>Применить параметры к 3D-модели</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. AI Fleet Buyer & Advisor Modal (💼 ИИ-Консультант по закупке флота & ROI) -->
+    <div class="sim-modal-overlay" id="ai-fleet-advisor-modal" style="display: none;">
+      <div class="sim-modal-card ai-fleet-advisor-card">
+        <div class="sim-modal-header">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div class="ac-info-icon-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #34d399;"><i class="fa-solid fa-briefcase"></i></div>
+            <div>
+              <h3>💼 ИИ-КОНСУЛЬТАНТ ПО ЗАКУПКЕ ФЛОТА (FLEET BUYER & ROI)</h3>
+              <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent-emerald);">OFFICIAL FLEET ACQUISITION & ECONOMIC ADVISOR</span>
+            </div>
+          </div>
+          <button class="btn-close-modal" id="btn-close-fleet-advisor"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="sim-modal-body">
+          <div class="fleet-advisor-intro">
+            <p>Ответьте на 3 быстрых вопроса, и алгоритм рассчитает оптимальный состав флота (AeroTerra H2 + AeroDrone X1 VTOL), экономию на водороде и срок окупаемости для вашего региона!</p>
+          </div>
+
+          <div class="fleet-calc-form-grid">
+            <div class="fleet-calc-field">
+              <label><i class="fa-solid fa-bullseye"></i> 1. Основная миссия флота:</label>
+              <select class="fleet-calc-select" id="fleet-calc-mission">
+                <option value="fire">🌲 Тушение лесных пожаров & Патруль МЧС (800л + 120л)</option>
+                <option value="agro" selected>🌾 Прецизионная обработка садов & Полей NDVI (600л + 80л)</option>
+                <option value="delivery">📦 Экспресс-доставка медикаментов и спецгрузов (50кг)</option>
+                <option value="patrol">⚡ Мониторинг трубопроводов, ЛЭП и границ</option>
+              </select>
+            </div>
+
+            <div class="fleet-calc-field">
+              <label><i class="fa-solid fa-map-location-dot"></i> 2. Площадь зоны покрытия (Гектары):</label>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="range" class="cust-slider" id="fleet-calc-area-range" min="2000" max="100000" step="1000" value="25000">
+                <span class="fleet-calc-val" id="fleet-calc-area-val">25,000 Га</span>
+              </div>
+            </div>
+
+            <div class="fleet-calc-field">
+              <label><i class="fa-solid fa-money-bill-wave"></i> 3. Планируемый бюджет ($ USD):</label>
+              <select class="fleet-calc-select" id="fleet-calc-budget">
+                <option value="starter">$150,000 – $350,000 (Стартовый флот)</option>
+                <option value="regional" selected>$350,000 – $850,000 (Региональный охват)</option>
+                <option value="enterprise">$850,000 – $2,500,000 (Флагманский парк)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Calculated ROI & Fleet Proposition Box -->
+          <div class="fleet-roi-results-box" id="fleet-roi-results-box">
+            <div class="fleet-roi-header">
+              <div class="fleet-roi-badge"><i class="fa-solid fa-calculator"></i> РЕЗУЛЬТАТ АНАЛИЗА ИИ И РАСЧЁТ ОКУПАЕМОСТИ</div>
+              <span class="fleet-roi-stamp"><i class="fa-solid fa-stamp"></i> ВАЛИДИРОВАНО MUSAYEV SARDOR</span>
+            </div>
+
+            <div class="fleet-roi-metrics-grid">
+              <div class="fleet-metric-card">
+                <span class="metric-label">Рекомендуемый Флот</span>
+                <span class="metric-val highlight" id="fleet-res-crafts">2x AeroTerra H2 + 4x AeroDrone X1</span>
+              </div>
+              <div class="fleet-metric-card">
+                <span class="metric-label">Экономия на топливе / год</span>
+                <span class="metric-val emerald" id="fleet-res-fuel-savings">$196,400 / год</span>
+              </div>
+              <div class="fleet-metric-card">
+                <span class="metric-label">Срок окупаемости (ROI)</span>
+                <span class="metric-val" id="fleet-res-roi">7.8 месяцев</span>
+              </div>
+              <div class="fleet-metric-card">
+                <span class="metric-label">Эффективность vs Вертолётов</span>
+                <span class="metric-val cyan" id="fleet-res-ratio">В 7.4 раза выгоднее</span>
+              </div>
+            </div>
+
+            <div class="fleet-roi-details" id="fleet-res-desc">
+              При обработке 25,000 Га связка из 2 тяжёлых бортов AeroTerra H2 (баки по 600 л) и 4 мини-дронов AeroDrone X1 VTOL обеспечивает круглосуточную ротацию, ULV-опрыскивание без перерасхода ядохимикатов и нулевые выбросы $CO_2$.
+            </div>
+          </div>
+
+          <!-- Download Official Offer & Author Stamp -->
+          <div class="fleet-advisor-actions">
+            <button class="btn-primary-action download-offer-btn" id="btn-download-fleet-offer">
+              <i class="fa-solid fa-file-pdf"></i> <span>Скачать Официальное Коммерческое Предложение (PDF)</span>
+            </button>
+            <button class="btn-secondary-action" id="btn-order-consultation">
+              <i class="fa-solid fa-handshake"></i> <span>Запросить Тест-Драйв Флота в Ташкенте</span>
+            </button>
+          </div>
+
+          <!-- Musayev Sardor Signature Footer -->
+          <div class="creator-validation-banner" style="margin-top: 1rem;">
+            <div class="creator-seal-gold"><i class="fa-solid fa-crown" style="color: #ffd700;"></i></div>
+            <div class="creator-seal-info">
+              <div class="creator-seal-title">
+                <span>👑 Musayev Sardor — Создатель и Главный Авиационный Архитектор</span>
+              </div>
+              <p class="creator-seal-desc">
+                Прямая поставка и контрактное производство. Контакты для инвесторов и министерств: <b>sarikmusaev2006@gmail.com</b>
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -2223,6 +2543,16 @@
           <div class="hud-corner bottom-left"></div>
           <div class="hud-corner bottom-right"></div>
 
+          <!-- Dual-Mode Selector: Chief Engineer v3.0 vs Fleet Buyer -->
+          <div class="ai-mode-tabs-bar">
+            <button class="ai-mode-tab-btn active" id="btn-ai-mode-engineer">
+              <i class="fa-solid fa-compass-drafting"></i> <span>📐 ИИ-Главный Конструктор v3.0</span>
+            </button>
+            <button class="ai-mode-tab-btn" id="btn-ai-mode-buyer">
+              <i class="fa-solid fa-briefcase"></i> <span>💼 ИИ-Ассистент Покупки (Fleet Buyer)</span>
+            </button>
+          </div>
+
           <div class="ai-advisor-header">
             <div class="ai-avatar-wrap">
               <div class="ai-avatar"><i class="fa-solid fa-brain"></i></div>
@@ -2384,7 +2714,7 @@
                 <span class="badge-tag">Live Cloud</span>
               </div>
               <button class="btn-download-action btn-dl-play-club">
-                <i class="fa-solid fa-play"></i> <span>Играть онлайн в браузере (MSFS Sim)</span>
+                <i class="fa-solid fa-play"></i> <span>Играть онлайн в браузере (🎮 GAME 3D)</span>
               </button>
             </div>
           </div>

@@ -129,6 +129,37 @@
   // 2. AIRCRAFT MODIFICATIONS SPECS
   // ----------------------------------------------------------------------------
   const PLANE_CONFIGS = {
+    aerodrone: {
+      name: '🚁 AeroDrone X1 VTOL (High-Speed Tilt-Rotor)',
+      type: 'vtol',
+      scale: 1.0,
+      mass: 280.0,
+      wingspan: 3.8,
+      wingArea: 3.2,
+      thrustMax: 14500.0,
+      fluidCapacity: 120,
+      h2Capacity: 12.0,
+      pitchAuth: 3.2,
+      rollAuth: 3.8,
+      yawAuth: 3.0,
+      maxSpeedKmh: 340,
+      isVTOL: true,
+      climbRateVTOL: 25.0
+    },
+    custom: {
+      name: '📂 Моя 3D-Модель (Пользовательский борт)',
+      scale: 1.0,
+      mass: 1200.0,
+      wingspan: 10.0,
+      wingArea: 12.0,
+      thrustMax: 9000.0,
+      fluidCapacity: 500,
+      h2Capacity: 25.0,
+      pitchAuth: 1.5,
+      rollAuth: 1.8,
+      yawAuth: 1.5,
+      maxSpeedKmh: 450
+    },
     a380: {
       name: 'Airbus A380-800 Superjumbo',
       scale: 1.0,
@@ -304,11 +335,19 @@
   const NUM_SPEED_LINES = 280;
   let joyActive = false, joyX = 0, joyY = 0, joyTouchId = null;
 
-  // Tashkent City Twin Sky-Towers & Landmarks
+  // Tashkent City Twin Sky-Towers & Landmarks (Giant 500m Towers)
   let twinTowersGroup = null;
   let towerAlphaMesh = null, towerBetaMesh = null;
   let towerBeaconLights = [];
   let towerBonusCollected = false;
+
+  // AeroDrone X1 VTOL & Custom 3D Model
+  let droneTiltNacelles = [];
+  let customLoadedMesh = null;
+  let simCameraShake = 0;
+  let activeRouteKey = 'route1';
+  let activeRouteWaypointsGroup = null;
+  let liveMapSyncInterval = null;
 
   // Real 3D Fire & Burning Airplane System
   let aircraftFireGroup = null;
@@ -769,7 +808,13 @@
     wingFlexLeftPivot = null;
     wingFlexRightPivot = null;
 
-    if (modelKey === 'a380') {
+    droneTiltNacelles = [];
+
+    if (modelKey === 'aerodrone') {
+      buildAeroDroneMesh();
+    } else if (modelKey === 'custom' && customLoadedMesh) {
+      planeGroup.add(customLoadedMesh.clone());
+    } else if (modelKey === 'a380') {
       buildA380Mesh();
     } else if (modelKey === 'b777') {
       buildB777Mesh();
@@ -781,10 +826,205 @@
     initAircraftFireSystem(planeGroup);
   }
 
+  // ----------------------------------------------------------------------------
+  // 3D PROCEDURAL HIGH-SPEED MINI-DRONE: AERODRONE X1 VTOL (8-ROTOR TILT-FAN)
+  // Sole Creator & Chief Aerospace Architect: Musayev Sardor
+  // ----------------------------------------------------------------------------
+  function buildAeroDroneMesh() {
+    droneTiltNacelles = [];
+
+    const baseColor = (SIM.customLiveryKey && LIVERY_COLORS[SIM.customLiveryKey]) ? LIVERY_COLORS[SIM.customLiveryKey] : 0x0a0f1d;
+    const carbonBodyMat = new THREE.MeshPhysicalMaterial({
+      color: baseColor,
+      roughness: 0.15,
+      metalness: 0.88,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.05,
+      envMapIntensity: 2.2
+    });
+    carbonBodyMat.name = 'bodyMat';
+
+    const goldAccentMat = new THREE.MeshPhysicalMaterial({
+      color: 0xffd700,
+      roughness: 0.2,
+      metalness: 0.85,
+      clearcoat: 1.0,
+      emissive: 0x443300,
+      emissiveIntensity: 0.4
+    });
+
+    const cyanGlowMat = new THREE.MeshPhysicalMaterial({
+      color: 0x00e5ff,
+      emissive: 0x00e5ff,
+      emissiveIntensity: 0.85,
+      roughness: 0.12,
+      metalness: 0.5
+    });
+
+    const lensMat = new THREE.MeshStandardMaterial({
+      color: 0x00e5ff,
+      emissive: 0x00e5ff,
+      emissiveIntensity: 1.2,
+      roughness: 0.1
+    });
+
+    const propBladeMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.25,
+      metalness: 0.7
+    });
+
+    // 1. Central Aerodynamic Drone Pod (Length: 3.4m, Width: 1.1m, Height: 0.8m)
+    const bodyGeo = new THREE.CylinderGeometry(0.52, 0.38, 3.4, 24);
+    bodyGeo.rotateX(Math.PI / 2);
+    bodyGeo.scale(1.15, 0.75, 1.0);
+    const bodyMesh = new THREE.Mesh(bodyGeo, carbonBodyMat);
+    bodyMesh.position.set(0, 0.45, 0);
+    bodyMesh.castShadow = true;
+    planeGroup.add(bodyMesh);
+
+    // Front Aerodynamic Nose Dome
+    const noseGeo = new THREE.SphereGeometry(0.48, 20, 16);
+    noseGeo.scale(1.1, 0.75, 1.4);
+    const noseMesh = new THREE.Mesh(noseGeo, carbonBodyMat);
+    noseMesh.position.set(0, 0.45, 1.7);
+    noseMesh.castShadow = true;
+    planeGroup.add(noseMesh);
+
+    // Dorsal Gold Racing Spine & Logo Strip
+    const spineGeo = new THREE.BoxGeometry(0.24, 0.12, 2.8);
+    const spineMesh = new THREE.Mesh(spineGeo, goldAccentMat);
+    spineMesh.position.set(0, 0.78, 0.1);
+    planeGroup.add(spineMesh);
+
+    // Front 360° AI-LiDAR & FLIR Thermal Sensor Turret
+    const lidarGeo = new THREE.SphereGeometry(0.24, 16, 16);
+    const lidarMesh = new THREE.Mesh(lidarGeo, carbonBodyMat);
+    lidarMesh.position.set(0, 0.2, 1.95);
+    planeGroup.add(lidarMesh);
+
+    const lensGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.08, 16);
+    lensGeo.rotateX(Math.PI / 2);
+    const lensMesh = new THREE.Mesh(lensGeo, lensMat);
+    lensMesh.position.set(0, 0.2, 2.16);
+    planeGroup.add(lensMesh);
+
+    // Top PEMFC 45 kW Hydrogen Micro-Stack
+    const h2StackGeo = new THREE.BoxGeometry(0.7, 0.25, 1.1);
+    const h2StackMesh = new THREE.Mesh(h2StackGeo, cyanGlowMat);
+    h2StackMesh.position.set(0, 0.82, -0.4);
+    planeGroup.add(h2StackMesh);
+
+    // 2. 4 X-Cross Carbon Arms & 4 Tilt-Rotor Nacelles (8 Rotors Total)
+    const boomAngles = [
+      { x: -1.75, z: 1.25, rotY: 0.35 },
+      { x: 1.75, z: 1.25, rotY: -0.35 },
+      { x: -1.85, z: -1.35, rotY: -0.35 },
+      { x: 1.85, z: -1.35, rotY: 0.35 }
+    ];
+
+    boomAngles.forEach((b, idx) => {
+      // Carbon arm connecting fuselage to nacelle
+      const armLength = Math.hypot(b.x, b.z);
+      const armGeo = new THREE.CylinderGeometry(0.08, 0.1, armLength, 12);
+      armGeo.rotateZ(Math.atan2(b.x, armLength));
+      armGeo.rotateY(b.rotY);
+      const armMesh = new THREE.Mesh(armGeo, carbonBodyMat);
+      armMesh.position.set(b.x * 0.5, 0.48, b.z * 0.5);
+      planeGroup.add(armMesh);
+
+      // Tilt-Rotor Nacelle Pivot Group (Rotates between VTOL Hover and High-Speed Cruise)
+      const nacellePivot = new THREE.Group();
+      nacellePivot.position.set(b.x, 0.48, b.z);
+      // Hover mode orientation: pointing UP
+      nacellePivot.rotation.x = -Math.PI / 2;
+
+      // Ducted Fan Cowling Ring
+      const ringGeo = new THREE.TorusGeometry(0.7, 0.07, 16, 32);
+      const ringMesh = new THREE.Mesh(ringGeo, carbonBodyMat);
+      nacellePivot.add(ringMesh);
+
+      // Neon Cyan Cowling Halo Ring
+      const neonRingGeo = new THREE.TorusGeometry(0.71, 0.025, 12, 32);
+      const neonRing = new THREE.Mesh(neonRingGeo, cyanGlowMat);
+      nacellePivot.add(neonRing);
+
+      // Central Brushless Motor Hub
+      const hubGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.45, 16);
+      const hubMesh = new THREE.Mesh(hubGeo, goldAccentMat);
+      nacellePivot.add(hubMesh);
+
+      // Dual Counter-Rotating Carbon Propellers (Top & Bottom)
+      for (const pOffset of [-0.14, 0.14]) {
+        const propGroup = new THREE.Group();
+        propGroup.position.z = pOffset;
+
+        for (let blade = 0; blade < 3; blade++) {
+          const bGeo = new THREE.BoxGeometry(0.05, 0.65, 0.015);
+          const bMesh = new THREE.Mesh(bGeo, propBladeMat);
+          bMesh.position.y = 0.32;
+          bMesh.rotation.z = (blade * Math.PI * 2) / 3;
+          propGroup.add(bMesh);
+        }
+        nacellePivot.add(propGroup);
+        propMeshes.push(propGroup);
+      }
+
+      planeGroup.add(nacellePivot);
+      droneTiltNacelles.push(nacellePivot);
+    });
+
+    // 3. Ventral Multi-Mission Pod: Fire Impulse Cannon / ULV Agro-Spray / 50kg Delivery Pod
+    const podGeo = new THREE.BoxGeometry(0.72, 0.4, 1.6);
+    const podMesh = new THREE.Mesh(podGeo, goldAccentMat);
+    podMesh.position.set(0, 0.1, 0);
+    planeGroup.add(podMesh);
+
+    // High-Pressure Fire Impulse Water Cannon Nozzle (Front)
+    const cannonGeo = new THREE.CylinderGeometry(0.07, 0.09, 0.55, 16);
+    cannonGeo.rotateX(Math.PI / 2);
+    const cannonMesh = new THREE.Mesh(cannonGeo, carbonBodyMat);
+    cannonMesh.position.set(0, 0.1, 1.05);
+    planeGroup.add(cannonMesh);
+
+    // Robotic Winch Delivery Pod & Cable Hook (Bottom)
+    const winchGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.18, 16);
+    const winchMesh = new THREE.Mesh(winchGeo, carbonBodyMat);
+    winchMesh.position.set(0, -0.16, 0);
+    planeGroup.add(winchMesh);
+
+    // 4. High-Strength Carbon Landing Skids (Left & Right)
+    [-0.75, 0.75].forEach(sX => {
+      const skidGeo = new THREE.CylinderGeometry(0.045, 0.045, 2.7, 12);
+      skidGeo.rotateX(Math.PI / 2);
+      const skidMesh = new THREE.Mesh(skidGeo, carbonBodyMat);
+      skidMesh.position.set(sX, -0.32, 0);
+      planeGroup.add(skidMesh);
+
+      [-0.85, 0.85].forEach(sZ => {
+        const strutGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.6, 8);
+        strutGeo.rotateZ(sX > 0 ? -0.22 : 0.22);
+        const strutMesh = new THREE.Mesh(strutGeo, carbonBodyMat);
+        strutMesh.position.set(sX * 0.78, -0.05, sZ);
+        planeGroup.add(strutMesh);
+      });
+    });
+
+    // High-Visibility LED Navigation Strobes
+    const stL = new THREE.PointLight(0xff0033, 2.0, 25);
+    stL.position.set(-1.9, 0.5, 0);
+    planeGroup.add(stL);
+
+    const stR = new THREE.PointLight(0x00ff66, 2.0, 25);
+    stR.position.set(1.9, 0.5, 0);
+    planeGroup.add(stR);
+  }
+
   function buildAeroTerraMesh() {
     // Materials (High-End PBR Clearcoat & Aerospace Composites)
+    const baseWhiteColor = (SIM.customLiveryKey && LIVERY_COLORS[SIM.customLiveryKey]) ? LIVERY_COLORS[SIM.customLiveryKey] : 0xf8fafc;
     const carbonWhiteMat = new THREE.MeshPhysicalMaterial({
-      color: 0xf8fafc,
+      color: baseWhiteColor,
       roughness: 0.12,
       metalness: 0.15,
       clearcoat: 1.0,
@@ -792,6 +1032,7 @@
       reflectivity: 1.0,
       envMapIntensity: 1.8
     });
+    carbonWhiteMat.name = 'bodyMat';
 
     const cyanAccentMat = new THREE.MeshPhysicalMaterial({
       color: 0x00e5ff,
@@ -983,17 +1224,18 @@
         propGroup.add(bladeMesh);
       }
 
-      // Propeller Motion Blur Disc (fades in at RPM > 40%)
+      // Clean photorealistic propellers (no translucent disc artifacts on wings)
       const blurGeo = new THREE.RingGeometry(0.12, 0.76, 32);
       const blurMat = new THREE.MeshBasicMaterial({
         color: 0x00e5ff,
         transparent: true,
         opacity: 0.0,
         side: THREE.DoubleSide,
-        depthWrite: false
+        depthWrite: false,
+        visible: false
       });
       const blurDisc = new THREE.Mesh(blurGeo, blurMat);
-      blurDisc.position.z = -0.02;
+      blurDisc.visible = false;
       propGroup.add(blurDisc);
       propBlurMeshes.push(blurDisc);
 
@@ -1585,7 +1827,7 @@
   }
 
   // ----------------------------------------------------------------------------
-  // 7A-2. PROCEDURAL INFINITE GROUND & HIGH-SPEED AIRFLOW SPEED LINES
+  // 7A-2. REAL SATELLITE TERRAIN & PHOTOREALISTIC TASHKENT GROUND
   // ----------------------------------------------------------------------------
   function initProceduralGroundPlane() {
     const canvas = document.createElement('canvas');
@@ -1593,70 +1835,75 @@
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
 
-    // Rich emerald green agricultural base
-    ctx.fillStyle = '#224d20';
+    // Rich photorealistic aerial terrain base (Tashkent Valley & Foothills)
+    const bgGrad = ctx.createRadialGradient(512, 512, 50, 512, 512, 700);
+    bgGrad.addColorStop(0, '#1e3a1f');
+    bgGrad.addColorStop(0.5, '#172f1a');
+    bgGrad.addColorStop(1, '#112213');
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, 1024, 1024);
 
-    // Patchwork farm fields with high optical contrast
-    const colors = ['#2d5e2b', '#1a421b', '#3b6f22', '#4d7c0f', '#365314', '#15803d', '#ca8a04', '#a16207', '#14532d'];
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        ctx.fillStyle = colors[(r * 5 + c * 3) % colors.length];
-        ctx.fillRect(c * 128 + 2, r * 128 + 2, 124, 124);
+    // Natural organic agricultural parcels (blended contours, no harsh checkerboard)
+    const naturalTones = ['#234421', '#1e381d', '#2b4f28', '#345e2f', '#274223', '#1b321a', '#3f592d', '#2a3d24'];
+    for (let i = 0; i < 48; i++) {
+      const rx = (i * 137.5) % 940;
+      const ry = (i * 223.7) % 940;
+      const rw = 90 + ((i * 47) % 140);
+      const rh = 80 + ((i * 73) % 130);
 
-        // Crop furrows / grid texture
-        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-        ctx.lineWidth = 2;
-        for (let f = 10; f < 120; f += 14) {
-          ctx.beginPath();
-          if ((r + c) % 2 === 0) {
-            ctx.moveTo(c * 128 + f, r * 128 + 2);
-            ctx.lineTo(c * 128 + f, r * 128 + 126);
-          } else {
-            ctx.moveTo(c * 128 + 2, r * 128 + f);
-            ctx.lineTo(c * 128 + 126, r * 128 + f);
-          }
-          ctx.stroke();
-        }
-      }
+      ctx.fillStyle = naturalTones[i % naturalTones.length];
+      ctx.fillRect(rx, ry, rw, rh);
+
+      // Soft field boundary / furrow lines
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(rx, ry, rw, rh);
     }
 
-    // Asphalt Roads
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 12;
+    // Asphalt Highway network (M39 & Tashkent Ring Road)
+    ctx.strokeStyle = '#272f3d';
+    ctx.lineWidth = 14;
     ctx.beginPath();
     ctx.moveTo(0, 512); ctx.lineTo(1024, 512);
     ctx.moveTo(512, 0); ctx.lineTo(512, 1024);
+    ctx.moveTo(120, 0); ctx.lineTo(920, 1024);
     ctx.stroke();
 
     // Road dashed white centerlines
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 8]);
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([10, 10]);
     ctx.beginPath();
     ctx.moveTo(0, 512); ctx.lineTo(1024, 512);
     ctx.moveTo(512, 0); ctx.lineTo(512, 1024);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Water Canal / River
+    // Chirchiq River & Bozsu Irrigation Canals
     ctx.strokeStyle = '#0284c7';
-    ctx.lineWidth = 16;
+    ctx.lineWidth = 18;
     ctx.beginPath();
-    ctx.moveTo(0, 180);
-    ctx.bezierCurveTo(280, 120, 680, 260, 1024, 160);
+    ctx.moveTo(0, 190);
+    ctx.bezierCurveTo(320, 140, 640, 310, 1024, 170);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(350, 180);
+    ctx.bezierCurveTo(450, 480, 580, 720, 780, 1024);
     ctx.stroke();
 
     groundCanvasTexture = new THREE.CanvasTexture(canvas);
     groundCanvasTexture.wrapS = THREE.RepeatWrapping;
     groundCanvasTexture.wrapT = THREE.RepeatWrapping;
-    groundCanvasTexture.repeat.set(80, 80);
+    groundCanvasTexture.repeat.set(60, 60);
 
     const groundGeo = new THREE.PlaneGeometry(35000, 35000);
     groundGeo.rotateX(-Math.PI / 2);
     const groundMat = new THREE.MeshStandardMaterial({
       map: groundCanvasTexture,
-      roughness: 0.85,
+      roughness: 0.82,
       metalness: 0.05
     });
     groundGridMesh = new THREE.Mesh(groundGeo, groundMat);
@@ -1665,6 +1912,28 @@
     if (terrainGroup) {
       terrainGroup.add(groundGridMesh);
     }
+
+    // Try loading actual high-res satellite imagery tile from ArcGIS
+    try {
+      const satLoader = new THREE.TextureLoader();
+      satLoader.setCrossOrigin('anonymous');
+      satLoader.load(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/12/1442/2418',
+        function (satTex) {
+          satTex.wrapS = THREE.RepeatWrapping;
+          satTex.wrapT = THREE.RepeatWrapping;
+          satTex.repeat.set(24, 24);
+          if (groundGridMesh && groundGridMesh.material) {
+            groundGridMesh.material.map = satTex;
+            groundGridMesh.material.needsUpdate = true;
+          }
+        },
+        undefined,
+        function (err) {
+          // Gracefully keep aerial photorealistic canvas texture
+        }
+      );
+    } catch (e) {}
   }
 
   function initSpeedLines() {
@@ -2018,44 +2287,44 @@
       const towerGroup = new THREE.Group();
       towerGroup.position.set(cfg.x, 0, cfg.z);
 
-      // 1. Tier 1: Base podium (0m - 140m), 44m x 44m
-      const t1Geo = new THREE.BoxGeometry(44, 140, 44);
+      // 1. Tier 1: Base podium (0m - 200m), 52m x 52m
+      const t1Geo = new THREE.BoxGeometry(52, 200, 52);
       const t1Mesh = new THREE.Mesh(t1Geo, glassFacadeMat);
-      t1Mesh.position.y = 70;
+      t1Mesh.position.y = 100;
       t1Mesh.castShadow = true;
       t1Mesh.receiveShadow = true;
       towerGroup.add(t1Mesh);
 
       // Floor illumination horizontal bands for Tier 1
-      for (let y = 14; y < 140; y += 14) {
-        const bandMesh = new THREE.Mesh(new THREE.BoxGeometry(44.2, 0.8, 44.2), goldTrimMat);
+      for (let y = 16; y < 200; y += 16) {
+        const bandMesh = new THREE.Mesh(new THREE.BoxGeometry(52.4, 1.2, 52.4), goldTrimMat);
         bandMesh.position.y = y;
         towerGroup.add(bandMesh);
       }
 
-      // 2. Tier 2: Mid section (140m - 260m), 36m x 36m
-      const t2Geo = new THREE.BoxGeometry(36, 120, 36);
+      // 2. Tier 2: Mid section (200m - 360m), 42m x 42m
+      const t2Geo = new THREE.BoxGeometry(42, 160, 42);
       const t2Mesh = new THREE.Mesh(t2Geo, glassFacadeMat);
-      t2Mesh.position.y = 200;
+      t2Mesh.position.y = 280;
       t2Mesh.castShadow = true;
       t2Mesh.receiveShadow = true;
       towerGroup.add(t2Mesh);
 
-      for (let y = 154; y < 260; y += 14) {
-        const bandMesh = new THREE.Mesh(new THREE.BoxGeometry(36.2, 0.8, 36.2), goldTrimMat);
+      for (let y = 216; y < 360; y += 16) {
+        const bandMesh = new THREE.Mesh(new THREE.BoxGeometry(42.4, 1.2, 42.4), goldTrimMat);
         bandMesh.position.y = y;
         towerGroup.add(bandMesh);
       }
 
-      // 3. Tier 3: Upper penthouse (260m - 320m), 28m x 28m
-      const t3Geo = new THREE.BoxGeometry(28, 60, 28);
+      // 3. Tier 3: Upper penthouse (360m - 450m), 32m x 32m
+      const t3Geo = new THREE.BoxGeometry(32, 90, 32);
       const t3Mesh = new THREE.Mesh(t3Geo, glassFacadeMat);
-      t3Mesh.position.y = 290;
+      t3Mesh.position.y = 405;
       t3Mesh.castShadow = true;
       t3Mesh.receiveShadow = true;
       towerGroup.add(t3Mesh);
 
-      // 4. Helipad Deck at y = 320m with [H] marking
+      // 4. Helipad Deck at y = 451.5m with [H] marking (Accessible for AeroDrone VTOL Landing!)
       const helipadCanvas = document.createElement('canvas');
       helipadCanvas.width = 512;
       helipadCanvas.height = 512;
@@ -2086,31 +2355,31 @@
         roughness: 0.6,
         metalness: 0.2
       });
-      const helipadMesh = new THREE.Mesh(new THREE.CylinderGeometry(14, 14, 2, 32), helipadMat);
-      helipadMesh.position.y = 321;
+      const helipadMesh = new THREE.Mesh(new THREE.CylinderGeometry(18, 18, 3, 32), helipadMat);
+      helipadMesh.position.y = 451.5;
       towerGroup.add(helipadMesh);
 
-      // 5. 25-meter Spire on Roof (320m to 345m)
-      const spireGeo = new THREE.CylinderGeometry(0.25, 0.9, 25, 12);
+      // 5. 40-meter Architectural Spire on Roof (452m to 492m)
+      const spireGeo = new THREE.CylinderGeometry(0.3, 1.2, 40, 12);
       const spireMesh = new THREE.Mesh(spireGeo, steelMat);
-      spireMesh.position.y = 333.5;
+      spireMesh.position.y = 472;
       towerGroup.add(spireMesh);
 
-      // 6. Blinking Aviation Hazard Red Beacon on Spire Tip (y = 346m)
-      const beaconLight = new THREE.PointLight(0xff0022, 2.5, 90);
-      beaconLight.position.set(0, 346, 0);
+      // 6. Blinking Aviation Hazard Red Beacon on Spire Tip (y = 492m)
+      const beaconLight = new THREE.PointLight(0xff0022, 3.5, 160);
+      beaconLight.position.set(0, 492, 0);
       towerGroup.add(beaconLight);
 
       const beaconSphere = new THREE.Mesh(
-        new THREE.SphereGeometry(0.8, 12, 12),
+        new THREE.SphereGeometry(1.2, 12, 12),
         new THREE.MeshBasicMaterial({ color: 0xff0022 })
       );
-      beaconSphere.position.set(0, 346, 0);
+      beaconSphere.position.set(0, 492, 0);
       towerGroup.add(beaconSphere);
 
       towerBeaconLights.push({ light: beaconLight, sphere: beaconSphere, phase: idx * Math.PI });
 
-      // 7. Glowing Neon Signage at Penthouse level
+      // 7. Glowing Neon Signage at Penthouse level (y = 438m)
       const signCanvas = document.createElement('canvas');
       signCanvas.width = 1024;
       signCanvas.height = 256;
@@ -2132,14 +2401,14 @@
 
       // 4 signs on all 4 faces of Tier 3
       const signOffsets = [
-        { x: 0, z: 14.2, rotY: 0 },
-        { x: 0, z: -14.2, rotY: Math.PI },
-        { x: 14.2, z: 0, rotY: Math.PI / 2 },
-        { x: -14.2, z: 0, rotY: -Math.PI / 2 }
+        { x: 0, z: 16.2, rotY: 0 },
+        { x: 0, z: -16.2, rotY: Math.PI },
+        { x: 16.2, z: 0, rotY: Math.PI / 2 },
+        { x: -16.2, z: 0, rotY: -Math.PI / 2 }
       ];
       signOffsets.forEach(so => {
-        const signPlane = new THREE.Mesh(new THREE.PlaneGeometry(24, 6), signMat);
-        signPlane.position.set(so.x, 305, so.z);
+        const signPlane = new THREE.Mesh(new THREE.PlaneGeometry(28, 7), signMat);
+        signPlane.position.set(so.x, 438, so.z);
         signPlane.rotation.y = so.rotY;
         towerGroup.add(signPlane);
       });
@@ -3134,9 +3403,9 @@
       p.rotation.z = flight.propAngle * (idx % 2 === 0 ? 1 : -1);
     });
 
-    const blurAlpha = Math.min(Math.max((effectiveThrottle - 0.25) / 0.6, 0), 0.42);
     propBlurMeshes.forEach(m => {
-      m.material.opacity = blurAlpha;
+      m.material.opacity = 0;
+      m.visible = false;
     });
 
     // 2. Mechanization Animations
@@ -3187,24 +3456,18 @@
       else if (flight.ias > 215) flight.throttle = Math.max(0.60, flight.throttle - 0.25 * dt);
       else flight.throttle = 0.80;
 
-      // 3. Tashkent City Navigation Route
-      const tashkentRoute = [
-        { name: 'Взлётная полоса 34', x: 0, z: 200 },
-        { name: 'Две Башни Ташкент-Сити', x: 0, z: 1750 },
-        { name: 'Агро-сады мониторинга', x: 350, z: 2400 },
-        { name: 'Лесной рубеж тушения', x: -650, z: 750 },
-        { name: 'Озеро Чирчик', x: -450, z: -500 },
-        { name: 'Глиссада ВПП ILS', x: 0, z: -1600 }
-      ];
+      // 3. Active 3D Flight Route Navigation
+      const routeObj = FLIGHT_ROUTES[activeRouteKey] || FLIGHT_ROUTES.route1;
+      const activeRoute = routeObj.waypoints;
 
-      const curWP = tashkentRoute[apMasterWaypointIdx];
+      const curWP = activeRoute[apMasterWaypointIdx % activeRoute.length];
       const dx = curWP.x - flight.pos.x;
       const dz = curWP.z - flight.pos.z;
       const distToWP = Math.hypot(dx, dz);
 
       if (distToWP < 220) {
-        apMasterWaypointIdx = (apMasterWaypointIdx + 1) % tashkentRoute.length;
-        showToast('🤖 АВТОПИЛОТ: КУРС НА ' + tashkentRoute[apMasterWaypointIdx].name.toUpperCase());
+        apMasterWaypointIdx = (apMasterWaypointIdx + 1) % activeRoute.length;
+        showToast('🤖 АВТОПИЛОТ: КУРС НА ' + activeRoute[apMasterWaypointIdx].name.toUpperCase());
       }
 
       const targetHdgRad = Math.atan2(dx, dz);
@@ -3386,7 +3649,7 @@
     const dragAcc = uV.clone().multiplyScalar(-dragForceN / currentMass);
 
     // Thrust
-    const thrustN = effectiveThrottle * cfg.thrustMax * Math.pow(rho / 1.225, 0.7);
+    const thrustN = effectiveThrottle * cfg.thrustMax * (SIM.thrustMultiplier || 1.0) * Math.pow(rho / 1.225, 0.7);
     const thrustAcc = fwd.clone().multiplyScalar(thrustN / currentMass);
 
     // Gravity (with Dev Overrides Scale)
@@ -3411,6 +3674,37 @@
 
     // Integrate velocity
     flight.vel.addScaledVector(acc, dt);
+
+    // VTOL Dynamics for AeroDrone X1 (Vertical Climb +25 m/s, Stable Hover, 340 km/h Sprint)
+    if (cfg.isVTOL) {
+      // 1. Tilt-rotor nacelle animation
+      const sprintFactor = Math.min(1.0, Math.max(0.0, (tas * 3.6 - 30) / 160));
+      const targetTilt = THREE.MathUtils.lerp(-Math.PI / 2, 0, sprintFactor);
+      droneTiltNacelles.forEach(n => {
+        n.rotation.x = THREE.MathUtils.lerp(n.rotation.x, targetTilt, 8 * dt);
+      });
+
+      // 2. Direct vertical lift & climb up to +25 m/s
+      if (effectiveThrottle > 0.52) {
+        const climbTarget = ((effectiveThrottle - 0.5) / 0.5) * (cfg.climbRateVTOL || 25.0);
+        flight.vel.y = THREE.MathUtils.lerp(flight.vel.y, climbTarget, 6 * dt);
+      } else if (effectiveThrottle < 0.44) {
+        const descTarget = -((0.44 - effectiveThrottle) / 0.44) * 16.0;
+        flight.vel.y = THREE.MathUtils.lerp(flight.vel.y, descTarget, 6 * dt);
+      } else {
+        // Stable Hover Mode (VSI = 0)
+        flight.vel.y = THREE.MathUtils.lerp(flight.vel.y, 0, 5 * dt);
+      }
+
+      // 3. High-Speed Sprint: tilting forward accelerates up to 340 km/h in 3s
+      if (flight.rot.x < -0.04) {
+        const sprintTarget = THREE.MathUtils.clamp(-flight.rot.x * 2.8, 0, 1.0) * (340 / 3.6);
+        flight.vel.z = THREE.MathUtils.lerp(flight.vel.z, sprintTarget, 3.5 * dt);
+      } else if (Math.abs(flight.pitchInput) < 0.1 && effectiveThrottle < 0.6) {
+        flight.vel.z = THREE.MathUtils.lerp(flight.vel.z, 0, 2.5 * dt);
+        flight.vel.x = THREE.MathUtils.lerp(flight.vel.x, 0, 2.5 * dt);
+      }
+    }
 
     // Aerodynamic Safety Clamps: Velocity components & VSI (-35 to +28 m/s)
     flight.vel.x = safeClamp(flight.vel.x, -110, 110, 0);
@@ -4348,6 +4642,32 @@
     } catch (e) {}
   }
 
+  function playCrashSirenAudio() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!airgateAudioCtx) airgateAudioCtx = new AudioCtx();
+      if (airgateAudioCtx.state === 'suspended') airgateAudioCtx.resume();
+
+      const osc = airgateAudioCtx.createOscillator();
+      const gain = airgateAudioCtx.createGain();
+      osc.type = 'sawtooth';
+      const now = airgateAudioCtx.currentTime;
+      osc.frequency.setValueAtTime(360, now);
+      osc.frequency.linearRampToValueAtTime(820, now + 0.35);
+      osc.frequency.linearRampToValueAtTime(360, now + 0.7);
+      osc.frequency.linearRampToValueAtTime(820, now + 1.05);
+
+      gain.gain.setValueAtTime(0.45, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
+
+      osc.connect(gain);
+      gain.connect(airgateAudioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 1.4);
+    } catch (e) {}
+  }
+
   function initAirgates3D() {
     if (!terrainGroup) return;
     if (airgatesGroup) {
@@ -4444,16 +4764,134 @@
     updateMissionHUD();
   }
 
+  // ----------------------------------------------------------------------------
+  // 5 INTERACTIVE 3D FLIGHT ROUTES SELECTOR & WAYPOINT GATES
+  // ----------------------------------------------------------------------------
+  const FLIGHT_ROUTES = {
+    route1: {
+      id: 'route1',
+      name: '🏙️ Центр Ташкента ➔ Башни ➔ Телебашня',
+      desc: 'Сквозь створ Двух Башен Ташкент-Сити и выход на Ташкентскую Телебашню',
+      color: 0x00e5ff,
+      waypoints: [
+        { name: 'ВПП 34 Старт', x: 0, y: 150, z: 200 },
+        { name: 'Две Башни Ташкента', x: 0, y: 350, z: 1750 },
+        { name: 'Проспект Амира Темура', x: 250, y: 400, z: 2800 },
+        { name: 'Ташкентская Телебашня', x: 100, y: 550, z: 4200 },
+        { name: 'Парк Навруз & Анхор', x: -300, y: 350, z: 3200 },
+        { name: 'Возврат на базу', x: 0, y: 250, z: 800 }
+      ]
+    },
+    route2: {
+      id: 'route2',
+      name: '🌾 Агро-рейд ➔ 6 секторов садов по NDVI',
+      desc: 'Низковысотный мониторинг и ультрамалообъёмное опрыскивание садов',
+      color: 0x00ff9d,
+      waypoints: [
+        { name: 'Выход в агро-зону', x: 200, y: 180, z: 800 },
+        { name: 'Сектор 1 (Яблоневые сады)', x: 450, y: 120, z: 1500 },
+        { name: 'Сектор 2 (Виноградники)', x: 700, y: 110, z: 2200 },
+        { name: 'Сектор 3 (Интенсивный сад)', x: 600, y: 100, z: 3100 },
+        { name: 'Сектор 4 (Хлопковый массив)', x: 300, y: 90, z: 3800 },
+        { name: 'Сектор 5 (Канал Бозсу)', x: -200, y: 130, z: 2600 },
+        { name: 'Сектор 6 (База дозаправки)', x: 0, y: 150, z: 1000 }
+      ]
+    },
+    route3: {
+      id: 'route3',
+      name: '🔥 Экстренный вылет МЧС ➔ Чарвак ➔ Чимган',
+      desc: 'Экстренная пожарная миссия со сбросом 800 л воды на горный очаг',
+      color: 0xff4500,
+      waypoints: [
+        { name: 'Взлёт по тревоге МЧС', x: 0, y: 250, z: 500 },
+        { name: 'Чарвакское водохранилище', x: -800, y: 120, z: 1800 },
+        { name: 'Забор воды / Заправка', x: -900, y: 60, z: 2400 },
+        { name: 'Горный хребет Чимган', x: -600, y: 480, z: 3600 },
+        { name: 'ОЧАГ ПОЖАРА: СБРОС ВОДЫ', x: -450, y: 220, z: 2200 },
+        { name: 'Возврат на дежурство', x: 0, y: 200, z: 400 }
+      ]
+    },
+    route4: {
+      id: 'route4',
+      name: '🚁 Спецмаршрут VTOL ➔ Крыша Башни №1 [H]',
+      desc: 'Спецрейс экспресс-доставки медикаментов мини-дроном на крышу 450м',
+      color: 0xfacc15,
+      waypoints: [
+        { name: 'Вертикальный взлёт VTOL', x: 0, y: 80, z: 300 },
+        { name: 'Набор эшелона 450м', x: -20, y: 460, z: 1000 },
+        { name: 'Створ башни Альфа', x: -45, y: 465, z: 1650 },
+        { name: 'ПОСАДКА НА ПЛОЩАДКУ [H]', x: -45, y: 452, z: 1750 },
+        { name: 'Взлёт с крыши', x: -45, y: 520, z: 1850 },
+        { name: 'Возврат на склад', x: 0, y: 100, z: 400 }
+      ]
+    },
+    route5: {
+      id: 'route5',
+      name: '🛬 Коробочка и посадка по ILS на ВПП 08L (UTTT)',
+      desc: 'Стандартная аэродромная схема захода на посадку по курсо-глиссадной системе',
+      color: 0x38bdf8,
+      waypoints: [
+        { name: 'Взлёт с курсом 340°', x: 0, y: 150, z: 600 },
+        { name: 'Первый разворот (Crosswind)', x: 800, y: 250, z: 1200 },
+        { name: 'Второй разворот (Downwind)', x: 1200, y: 350, z: -500 },
+        { name: 'Третий разворот (Base Leg)', x: 600, y: 250, z: -2000 },
+        { name: 'Четвёртый разворот (Final ILS)', x: 0, y: 180, z: -2400 },
+        { name: 'Торец ВПП 34 (Touchdown)', x: 0, y: 5, z: 50 }
+      ]
+    }
+  };
+
+  function setFlightRoute(routeKey) {
+    if (!FLIGHT_ROUTES[routeKey]) routeKey = 'route1';
+    activeRouteKey = routeKey;
+    const r = FLIGHT_ROUTES[routeKey];
+    apMasterWaypointIdx = 0;
+
+    if (terrainGroup && activeRouteWaypointsGroup) {
+      terrainGroup.remove(activeRouteWaypointsGroup);
+    }
+    activeRouteWaypointsGroup = new THREE.Group();
+    activeRouteWaypointsGroup.name = 'FlightRouteWaypoints';
+
+    const gateMat = new THREE.MeshStandardMaterial({
+      color: r.color,
+      emissive: r.color,
+      emissiveIntensity: 0.9,
+      roughness: 0.2
+    });
+
+    r.waypoints.forEach((wp) => {
+      const gGroup = new THREE.Group();
+      gGroup.position.set(wp.x, wp.y, wp.z);
+
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(18, 1.2, 16, 32), gateMat);
+      gGroup.add(ring);
+
+      const pylon = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.3, 0.3, Math.max(10, wp.y * 2), 8),
+        new THREE.MeshBasicMaterial({ color: r.color, transparent: true, opacity: 0.35 })
+      );
+      pylon.position.y = -wp.y;
+      gGroup.add(pylon);
+
+      activeRouteWaypointsGroup.add(gGroup);
+    });
+
+    if (terrainGroup) terrainGroup.add(activeRouteWaypointsGroup);
+    showToast(`🗺️ ВЫБРАН МАРШРУТ: ${r.name.toUpperCase()}`);
+  }
+
   const _gateWorldPos = new THREE.Vector3();
   function updateAirgatesAndMissions(dt) {
     if (!planeGroup) return;
 
-    // Tashkent Twin Sky-Towers Extreme Gap Flight & Collision Detection
+    // Tashkent Twin Sky-Towers Extreme Gap Flight, Helipad Landing & Collision Detection
     const px = planeGroup.position.x;
     const py = planeGroup.position.y;
     const pz = planeGroup.position.z;
 
-    if (!towerBonusCollected && Math.abs(px) < 23.0 && py >= 80.0 && py <= 350.0 && pz >= 1720.0 && pz <= 1780.0) {
+    // Extreme Flight Gap between Giant Towers (y up to 480m)
+    if (!towerBonusCollected && Math.abs(px) < 20.0 && py >= 80.0 && py <= 480.0 && pz >= 1715.0 && pz <= 1785.0) {
       towerBonusCollected = true;
       missionTotalScore += 500;
       playAirgateChime();
@@ -4463,12 +4901,29 @@
       }
     }
 
-    // Collision Detection against Tower Alpha (x: [-67, -23]) and Tower Beta (x: [23, 67])
-    if (!flight.crashed && flight.crashGraceTimer <= 0) {
-      const hitAlpha = (px >= -67.0 && px <= -23.0 && py >= 0 && py <= 348.0 && pz >= 1728.0 && pz <= 1772.0);
-      const hitBeta = (px >= 23.0 && px <= 67.0 && py >= 0 && py <= 348.0 && pz >= 1728.0 && pz <= 1772.0);
+    // Helipad Landing detection on Tower Alpha or Beta Roofs (y = 451.5m)
+    const onHelipadAlpha = (Math.abs(px - (-45.0)) < 16.0 && Math.abs(pz - 1750.0) < 16.0 && py >= 450.0 && py <= 456.0);
+    const onHelipadBeta = (Math.abs(px - 45.0) < 16.0 && Math.abs(pz - 1750.0) < 16.0 && py >= 450.0 && py <= 456.0);
+    if ((onHelipadAlpha || onHelipadBeta) && Math.abs(flight.vel.y) < 6.0) {
+      flight.altitude = 452.0;
+      flight.vel.y = 0;
+      flight.onGround = true;
+      if (!flight.roofBonus) {
+        flight.roofBonus = true;
+        missionTotalScore += 1000;
+        playAirgateChime();
+        showToast('🚁 УСПЕШНАЯ ПОСАДКА НА КРЫШУ НЕБОСКРЁБА ТАШКЕНТА [H]! +1000 PTS');
+      }
+    }
+
+    // Collision Detection against Tower Alpha (x: [-72, -18]) and Tower Beta (x: [18, 72]) up to 495m
+    if (!flight.crashed && flight.crashGraceTimer <= 0 && !onHelipadAlpha && !onHelipadBeta) {
+      const hitAlpha = (px >= -72.0 && px <= -18.0 && py >= 0 && py <= 495.0 && pz >= 1715.0 && pz <= 1785.0);
+      const hitBeta = (px >= 18.0 && px <= 72.0 && py >= 0 && py <= 495.0 && pz >= 1715.0 && pz <= 1785.0);
       if (hitAlpha || hitBeta) {
-        triggerAircraftCrash('💥 СТОЛКНОВЕНИЕ С НЕБОСКРЁБОМ ТАШКЕНТ-СИТИ! КОРПУС РАЗБИТ И ГОРИТ');
+        simCameraShake = 2.5;
+        playCrashSirenAudio();
+        triggerAircraftCrash('💥 СТОЛКНОВЕНИЕ С НЕБОСКРЁБОМ ТАШКЕНТА! КРУШЕНИЕ И ВЗРЫВ БОРТА');
       }
     }
 
@@ -5711,6 +6166,49 @@
     document.getElementById('sim-select-plane')?.addEventListener('change', (e) => handleModelChange(e.target.value));
     document.getElementById('sim-select-aircraft')?.addEventListener('change', (e) => handleModelChange(e.target.value));
 
+    // Flight Route Selector Listener
+    document.getElementById('sim-select-route')?.addEventListener('change', (e) => {
+      setFlightRoute(e.target.value);
+    });
+
+    // Custom 3D Model File Upload
+    const inputCustomModel = document.getElementById('input-custom-model');
+    document.getElementById('btn-upload-custom-model')?.addEventListener('click', () => {
+      inputCustomModel?.click();
+    });
+    inputCustomModel?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (file) loadCustom3DModelFile(file);
+    });
+
+    // Aircraft Info Modal Toggle
+    document.getElementById('btn-aircraft-info-modal')?.addEventListener('click', () => {
+      openAircraftInfoModal();
+    });
+    document.getElementById('btn-close-aircraft-info')?.addEventListener('click', () => {
+      const modal = document.getElementById('aircraft-info-modal');
+      if (modal) modal.style.display = 'none';
+    });
+
+    // Visual Customizer Modal Toggle
+    document.getElementById('btn-open-customizer')?.addEventListener('click', () => {
+      const modal = document.getElementById('aircraft-customizer-modal');
+      if (modal) modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+    });
+    document.getElementById('btn-close-customizer')?.addEventListener('click', () => {
+      const modal = document.getElementById('aircraft-customizer-modal');
+      if (modal) modal.style.display = 'none';
+    });
+
+    // AI Fleet Advisor Modal Toggle
+    document.getElementById('btn-open-ai-fleet-advisor')?.addEventListener('click', () => {
+      openAIFleetAdvisorModal();
+    });
+
+    // Start Live 1s GPS Sync
+    initLiveTashkentMapSync();
+    setupCustomizerAndFleetAdvisorUI();
+
     // Pitch Inversion Toggle
     const togglePitchInvert = () => {
       SIM.invertPitch = !SIM.invertPitch;
@@ -6326,6 +6824,377 @@
   };
 
   // ----------------------------------------------------------------------------
+  // 16.5. CUSTOM 3D MODEL LOADER & DOSSIER MODALS
+  // ----------------------------------------------------------------------------
+  function loadCustom3DModelFile(file) {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    showToast(`⏳ ЗАГРУЗКА 3D-МОДЕЛИ: ${file.name.toUpperCase()}...`);
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const contents = e.target.result;
+      try {
+        if (ext === 'glb' || ext === 'gltf') {
+          if (typeof THREE.GLTFLoader !== 'undefined') {
+            const loader = new THREE.GLTFLoader();
+            loader.parse(contents, '', (gltf) => {
+              applyCustomModel(gltf.scene);
+            });
+          }
+        } else if (ext === 'stl') {
+          if (typeof THREE.STLLoader !== 'undefined') {
+            const loader = new THREE.STLLoader();
+            const geo = loader.parse(contents);
+            geo.center();
+            const mat = new THREE.MeshPhysicalMaterial({ color: 0x00e5ff, metalness: 0.8, roughness: 0.2 });
+            const m = new THREE.Mesh(geo, mat);
+            applyCustomModel(m);
+          }
+        } else if (ext === 'obj') {
+          if (typeof THREE.OBJLoader !== 'undefined') {
+            const loader = new THREE.OBJLoader();
+            const obj = loader.parse(contents);
+            applyCustomModel(obj);
+          }
+        }
+      } catch (err) {
+        showToast('❌ ОШИБКА ЧТЕНИЯ 3D-ФАЙЛА: ' + err.message);
+      }
+    };
+
+    if (ext === 'glb' || ext === 'stl') reader.readAsArrayBuffer(file);
+    else reader.readAsText(file);
+  }
+
+  function applyCustomModel(meshObj) {
+    const box = new THREE.Box3().setFromObject(meshObj);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z) || 1.0;
+    const targetScale = 12.0 / maxDim;
+    meshObj.scale.setScalar(targetScale);
+    meshObj.position.set(0, 0.4, 0);
+
+    customLoadedMesh = meshObj;
+    PLANE_CONFIGS.custom.name = `📂 Своя 3D-Модель (Пользовательский борт)`;
+    switchAircraftModel('custom');
+    showToast('✅ 3D-МОДЕЛЬ УСПЕШНО ЗАГРУЖЕНА! МОЖНО ЛЕТАТЬ!');
+  }
+
+  function openAircraftInfoModal() {
+    const modal = document.getElementById('aircraft-info-modal');
+    if (!modal) return;
+    const modelKey = SIM.planeModel || 'aeroterra';
+    const cfg = PLANE_CONFIGS[modelKey] || PLANE_CONFIGS.aeroterra;
+
+    const titleEl = document.getElementById('ac-info-title');
+    if (titleEl) titleEl.textContent = cfg.name;
+
+    const badgeEl = document.getElementById('ac-info-badge');
+    if (badgeEl) {
+      badgeEl.textContent = cfg.isVTOL ? '🚁 ВЕРТИКАЛЬНЫЙ ВЗЛЁТ (VTOL)' : '✈️ КОРОТКИЙ ВЗЛЁТ (STOL)';
+      badgeEl.className = cfg.isVTOL ? 'ac-info-badge vtol' : 'ac-info-badge stol';
+    }
+
+    const ttxBody = document.getElementById('ac-info-ttx-tbody');
+    if (ttxBody) {
+      ttxBody.innerHTML = `
+        <tr><td>Взлётная масса (MTOW)</td><td><b>${cfg.mass} кг</b></td><td>Тип взлёта</td><td><b>${cfg.isVTOL ? 'VTOL (С места)' : 'STOL (85 м)'}</b></td></tr>
+        <tr><td>Размах / Габариты</td><td><b>${cfg.wingspan} м</b></td><td>Макс. скорость</td><td><b>${cfg.maxSpeedKmh || 240} км/ч</b></td></tr>
+        <tr><td>Запас топлива / H2</td><td><b>${cfg.h2Capacity} кг LH₂</b></td><td>Ёмкость бака / Модуль</td><td><b>${cfg.fluidCapacity} л</b></td></tr>
+        <tr><td>Себестоимость часа</td><td><b>${cfg.isVTOL ? '$18/час' : '$48/час'}</b></td><td>Тяговооружённость</td><td><b>${cfg.isVTOL ? '1.85 (Высокая)' : '1.15 (Оптимальная)'}</b></td></tr>
+      `;
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function openAIFleetAdvisorModal() {
+    const modal = document.getElementById('ai-fleet-advisor-modal');
+    if (modal) {
+      modal.style.display = 'flex';
+      return;
+    }
+    // Fallback: switch to club section where AI advisor is located
+    const clubLink = document.querySelector('a[href="#club-section"]');
+    if (clubLink) clubLink.click();
+  }
+
+  const LIVERY_COLORS = {
+    white: 0xf8fafc,
+    carbon: 0x11141c,
+    gold: 0xf59e0b,
+    cyan: 0x0284c7,
+    emerald: 0x059669
+  };
+
+  function applyLivery(liveryKey) {
+    SIM.customLiveryKey = liveryKey;
+    const col = LIVERY_COLORS[liveryKey] || 0xf8fafc;
+    if (!planeGroup) return;
+    planeGroup.traverse(child => {
+      if (child.isMesh && child.material) {
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        mats.forEach(m => {
+          if (m.name === 'bodyMat' || (!m.transparent && !m.emissiveIntensity && m.metalness < 0.95)) {
+            m.color.setHex(col);
+            if (liveryKey === 'gold') {
+              m.metalness = 0.95;
+              m.roughness = 0.12;
+            } else if (liveryKey === 'carbon') {
+              m.metalness = 0.8;
+              m.roughness = 0.22;
+            } else {
+              m.metalness = 0.2;
+              m.roughness = 0.15;
+            }
+            m.needsUpdate = true;
+          }
+        });
+      }
+    });
+  }
+
+  function setupCustomizerAndFleetAdvisorUI() {
+    // Livery chips
+    document.querySelectorAll('.livery-chip').forEach(chip => {
+      chip.addEventListener('click', function () {
+        document.querySelectorAll('.livery-chip').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        const liv = this.dataset.livery;
+        applyLivery(liv);
+      });
+    });
+
+    // Wingspan slider
+    const spanSlider = document.getElementById('cust-slider-wingspan');
+    spanSlider?.addEventListener('input', function () {
+      const val = parseFloat(this.value);
+      const valEl = document.getElementById('cust-val-wingspan');
+      if (valEl) valEl.textContent = val.toFixed(1) + ' м';
+      if (planeGroup) planeGroup.scale.x = val / 12.4;
+    });
+
+    // Power slider
+    const pwrSlider = document.getElementById('cust-slider-power');
+    pwrSlider?.addEventListener('input', function () {
+      const val = parseInt(this.value, 10);
+      const valEl = document.getElementById('cust-val-power');
+      if (valEl) valEl.textContent = val + '%';
+      SIM.thrustMultiplier = val / 100;
+    });
+
+    // Gear buttons
+    document.querySelectorAll('.gear-select-btn').forEach(btn => {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.gear-select-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        showToast('⚙️ ШАССИ: ' + this.textContent.trim());
+      });
+    });
+
+    // Apply customizer button
+    document.getElementById('btn-apply-customizer')?.addEventListener('click', () => {
+      showToast('✨ КАСТОМИЗАЦИЯ УСПЕШНО ПРИМЕНЕНА К 3D-МОДЕЛИ!');
+      const modal = document.getElementById('aircraft-customizer-modal');
+      if (modal) modal.style.display = 'none';
+    });
+
+    // Close fleet advisor modal
+    document.getElementById('btn-close-fleet-advisor')?.addEventListener('click', () => {
+      const m = document.getElementById('ai-fleet-advisor-modal');
+      if (m) m.style.display = 'none';
+    });
+
+    // Fleet ROI calculation inputs
+    function updateFleetAdvisorROI() {
+      const missionEl = document.getElementById('fleet-calc-mission');
+      const areaEl = document.getElementById('fleet-calc-area-range');
+      const budgetEl = document.getElementById('fleet-calc-budget');
+      if (!missionEl || !areaEl) return;
+
+      const mission = missionEl.value;
+      const area = parseInt(areaEl.value, 10);
+      const budgetTier = budgetEl ? budgetEl.value : 'regional';
+
+      let crafts = '2x AeroTerra H2 + 4x AeroDrone X1';
+      let desc = '';
+      if (mission === 'fire') {
+        crafts = area > 50000 ? '4x AeroTerra H2 (800л) + 6x AeroDrone X1 VTOL' : '2x AeroTerra H2 (800л) + 3x AeroDrone X1 VTOL';
+        desc = `Для локализации лесных пожаров на площади ${area.toLocaleString('ru-RU')} Га тяжёлые борта AeroTerra H2 сбрасывают 800-литровые каскады водяной стены, а скоростные дроны AeroDrone X1 осуществляют круглосуточный тепловизионный FLIR-патруль и импульсное тушение очагов.`;
+      } else if (mission === 'agro') {
+        crafts = area > 40000 ? '3x AeroTerra H2 (600л) + 6x AeroDrone X1 VTOL' : '2x AeroTerra H2 (600л) + 4x AeroDrone X1 VTOL';
+        desc = `При обработке ${area.toLocaleString('ru-RU')} Га садов и полей ULV-опрыскивание ультрамалым объёмом снижает расход пестицидов на 42%, а водородный привод устраняет выхлопные газы над сельхозкультурами.`;
+      } else if (mission === 'delivery') {
+        crafts = '1x AeroTerra H2 (Базовый) + 8x AeroDrone X1 VTOL (50кг)';
+        desc = `Для экспресс-доставки медикаментов и грузов в горные и отдалённые районы дроны AeroDrone X1 развивают 340 км/ч, выполняя вертикальный спуск контейнеров на лебёдке без необходимости посадки.`;
+      } else {
+        crafts = '2x AeroTerra H2 + 4x AeroDrone X1 (LiDAR)';
+        desc = `Для мониторинга инфраструктуры и ЛЭП дальность 1400 км и LiDAR-сканирование обеспечивают непрерывное 3D-картографирование в реальном времени.`;
+      }
+
+      const fuelSavings = Math.round(area * 7.85);
+      const budgetVal = budgetTier === 'starter' ? 250000 : (budgetTier === 'enterprise' ? 1200000 : 550000);
+      const roiMonths = Math.max(4.2, (budgetVal / (fuelSavings / 12)).toFixed(1));
+
+      const elCrafts = document.getElementById('fleet-res-crafts');
+      if (elCrafts) elCrafts.textContent = crafts;
+      const elSav = document.getElementById('fleet-res-fuel-savings');
+      if (elSav) elSav.textContent = `$${fuelSavings.toLocaleString('en-US')} / год`;
+      const elRoi = document.getElementById('fleet-res-roi');
+      if (elRoi) elRoi.textContent = `${roiMonths} месяцев`;
+      const elRatio = document.getElementById('fleet-res-ratio');
+      if (elRatio) elRatio.textContent = mission === 'fire' ? 'В 8.2 раза выгоднее Ми-8' : 'В 7.4 раза выгоднее';
+      const elDesc = document.getElementById('fleet-res-desc');
+      if (elDesc) elDesc.textContent = desc;
+    }
+
+    document.getElementById('fleet-calc-area-range')?.addEventListener('input', function () {
+      const val = parseInt(this.value, 10);
+      const lbl = document.getElementById('fleet-calc-area-val');
+      if (lbl) lbl.textContent = val.toLocaleString('ru-RU') + ' Га';
+      updateFleetAdvisorROI();
+    });
+    document.getElementById('fleet-calc-mission')?.addEventListener('change', updateFleetAdvisorROI);
+    document.getElementById('fleet-calc-budget')?.addEventListener('change', updateFleetAdvisorROI);
+
+    // Download Offer Button
+    document.getElementById('btn-download-fleet-offer')?.addEventListener('click', () => {
+      const missionEl = document.getElementById('fleet-calc-mission');
+      const missionText = missionEl ? missionEl.options[missionEl.selectedIndex].text : 'Комплексный флот';
+      const areaVal = document.getElementById('fleet-calc-area-val')?.textContent || '25,000 Га';
+      const fleetComp = document.getElementById('fleet-res-crafts')?.textContent || '2x AeroTerra H2 + 4x AeroDrone X1';
+      const savings = document.getElementById('fleet-res-fuel-savings')?.textContent || '$196,400 / год';
+      const roi = document.getElementById('fleet-res-roi')?.textContent || '7.8 месяцев';
+
+      const win = window.open('', '_blank');
+      if (!win) {
+        showToast('Пожалуйста, разрешите всплывающие окна для печати КП');
+        return;
+      }
+
+      win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Коммерческое Предложение — Флот AeroTerra H2 & AeroDrone X1</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #fff; color: #1e293b; padding: 40px; margin: 0; }
+            .header { border-bottom: 3px solid #0284c7; padding-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+            .logo { font-size: 24px; font-weight: 800; color: #0284c7; }
+            .tagline { font-size: 13px; color: #64748b; margin-top: 4px; }
+            .title-box { margin: 30px 0 20px 0; background: #f0f9ff; border-left: 5px solid #0284c7; padding: 15px 20px; border-radius: 4px; }
+            .title-box h1 { margin: 0; font-size: 20px; color: #0369a1; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 25px 0; }
+            .card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; background: #f8fafc; }
+            .card h3 { margin: 0 0 10px 0; font-size: 14px; color: #475569; text-transform: uppercase; }
+            .card .val { font-size: 18px; font-weight: 700; color: #0f172a; }
+            .seal-box { margin-top: 40px; border-top: 2px dashed #cbd5e1; padding-top: 25px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .stamp { border: 3px double #b45309; color: #b45309; padding: 12px 18px; border-radius: 8px; font-weight: 800; text-align: center; text-transform: uppercase; font-size: 12px; }
+            .btn-print { margin-top: 20px; padding: 10px 20px; background: #0284c7; color: #fff; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; }
+            @media print { .btn-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="logo">✈️ AEROTERRA H2 AEROSPACE</div>
+              <div class="tagline">Водородная беспилотная авиация следующего поколения · Ташкент, Узбекистан</div>
+            </div>
+            <div style="text-align: right; font-size: 12px; color: #64748b;">
+              Дата: \${new Date().toLocaleDateString('ru-RU')}<br>
+              Исх. № ATH2-\${Date.now().toString().slice(-6)}
+            </div>
+          </div>
+
+          <div class="title-box">
+            <h1>ОФИЦИАЛЬНОЕ КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ НА ПОСТАВКУ ФЛОТА</h1>
+            <p style="margin: 5px 0 0 0; font-size: 13px; color: #334155;">Миссия: <b>\${missionText}</b> · Зона действия: <b>\${areaVal}</b></p>
+          </div>
+
+          <div class="grid">
+            <div class="card">
+              <h3>Рекомендуемый Состав Флота</h3>
+              <div class="val">\${fleetComp}</div>
+              <div style="font-size: 12px; color: #64748b; margin-top: 6px;">Включая наземные криогенные водородные станции LH₂ и пульт ДУ</div>
+            </div>
+            <div class="card">
+              <h3>Годовая Экономия Топлива</h3>
+              <div class="val" style="color: #059669;">\${savings}</div>
+              <div style="font-size: 12px; color: #64748b; margin-top: 6px;">Прямая экономия по сравнению с вертолётами Ми-8 и Bell-407</div>
+            </div>
+            <div class="card">
+              <h3>Срок Окупаемости Проекта (ROI)</h3>
+              <div class="val">\${roi}</div>
+              <div style="font-size: 12px; color: #64748b; margin-top: 6px;">Полная амортизация за счёт нулевого расхода керосина</div>
+            </div>
+            <div class="card">
+              <h3>Экологический Стандарт</h3>
+              <div class="val" style="color: #0284c7;">Zero Carbon (0% CO₂)</div>
+              <div style="font-size: 12px; color: #64748b; margin-top: 6px;">Топливные элементы PEMFC на зелёном водороде</div>
+            </div>
+          </div>
+
+          <div class="seal-box">
+            <div>
+              <p style="margin: 0; font-size: 14px; font-weight: 700;">Создатель и Главный Авиационный Архитектор:</p>
+              <p style="margin: 4px 0 0 0; font-size: 16px; font-weight: 800; color: #0f172a;">👑 Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО</p>
+              <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">Прямой контакт: sarikmusaev2006@gmail.com · г. Ташкент</p>
+            </div>
+            <div class="stamp">
+              ★ УТВЕРЖДЕНО К ПОСТАВКЕ ★<br>
+              MUSAYEV SARDOR<br>
+              AEROSPACE ARCHITECT
+            </div>
+          </div>
+
+          <button class="btn-print" onclick="window.print()">🖨️ Распечатать / Сохранить в PDF</button>
+        </body>
+        </html>
+      `);
+      win.document.close();
+    });
+
+    document.getElementById('btn-order-consultation')?.addEventListener('click', () => {
+      showToast('📩 ЗАПРОС ОТПРАВЛЕН ГЛАВНОМУ АРХИТЕКТОРУ MUSAYEV SARDOR (sarikmusaev2006@gmail.com)');
+    });
+  }
+
+  function initLiveTashkentMapSync() {
+    if (liveMapSyncInterval) clearInterval(liveMapSyncInterval);
+    liveMapSyncInterval = setInterval(() => {
+      const lat = 41.3111 + (flight.pos.z / 111320);
+      const lon = 69.2797 + (flight.pos.x / 83400);
+
+      const latStr = Math.abs(lat).toFixed(4) + '°' + (lat >= 0 ? 'N' : 'S');
+      const lonStr = Math.abs(lon).toFixed(4) + '°' + (lon >= 0 ? 'E' : 'W');
+
+      const elCoords = document.getElementById('sim-radar-coords');
+      if (elCoords) elCoords.textContent = `${latStr} ${lonStr}`;
+
+      const elHdg = document.getElementById('sim-radar-hdg');
+      if (elHdg) {
+        const hdg = ((flight.rot.y * 180 / Math.PI) % 360 + 360) % 360;
+        elHdg.textContent = Math.round(hdg).toString().padStart(3, '0') + '°';
+      }
+
+      const elSpd = document.getElementById('sim-radar-spd');
+      if (elSpd) elSpd.textContent = Math.round(flight.ias) + ' км/ч';
+
+      const elAgl = document.getElementById('sim-radar-agl');
+      if (elAgl) elAgl.textContent = Math.round(flight.altAGL) + ' м';
+
+      const elLiveClock = document.getElementById('sim-radar-live-clock');
+      if (elLiveClock) {
+        const tTime = new Date().toLocaleTimeString('ru-RU', { timeZone: 'Asia/Tashkent' });
+        elLiveClock.textContent = `Ташкент ${tTime} LIVE (UTC+5)`;
+      }
+    }, 1000);
+  }
+
+  // ----------------------------------------------------------------------------
   // 17. MAIN 60 FPS ANIMATION LOOP
   // ----------------------------------------------------------------------------
   function animate() {
@@ -6446,8 +7315,14 @@
     // 4. Audio
     updateAudio();
 
-    // 5. Camera
+    // 5. Camera & Screen Shake
     updateCamera();
+    if (simCameraShake > 0.01) {
+      camera.position.x += (Math.random() - 0.5) * simCameraShake;
+      camera.position.y += (Math.random() - 0.5) * simCameraShake;
+      camera.position.z += (Math.random() - 0.5) * simCameraShake;
+      simCameraShake = Math.max(0, simCameraShake - 2.8 * dt);
+    }
 
     // 6. UI Instruments, Radar, Live Professor Formulas & Mission HUD (Throttled to 10 Hz)
     const now = performance.now();
